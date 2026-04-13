@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理员后台</title>
+<style>
+* {margin:0;padding:0;box-sizing:border-box;font-family:"Microsoft Yahei",Arial,sans-serif;}
+body{background:#f5f7fa;min-height:100vh;}
+.top-bar{height:80px;background:#fff;border-bottom:1px solid #e4e7ed;display:flex;align-items:center;justify-content:space-between;padding:0 20px;}
+.top-bar .logo{font-size:28px;font-weight:bold;color:#303133;}
+.top-bar .user-info{display:flex;align-items:center;gap:15px;font-size:20px;}
+.top-bar .user-info .avatar{width:50px;height:50px;border-radius:50%;background:#409eff;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.sidebar{width:220px;background:#2b3a55;position:fixed;top:80px;left:0;bottom:0;padding-top:10px;}
+.sidebar .menu-item{color:#bfcbd9;height:60px;line-height:60px;padding:0 20px;cursor:pointer;transition:all 0.3s;border-left:4px solid transparent;font-size:18px;}
+.sidebar .menu-item:hover,.sidebar .menu-item.active{background:#202c3f;color:#fff;border-left-color:#409eff;}
+.sidebar .menu-item-danger{background:#F56C6C !important;border-left-color:#F56C6C !important;color:#fff !important;}
+.main-content{margin-left:220px;margin-top:80px;padding:30px;min-height:calc(100vh - 80px);}
+.page{display:none;background:#fff;border-radius:12px;padding:30px;box-shadow:0 2px 12px 0 rgba(0,0,0,0.1);}
+.page.active{display:block;}
+.welcome-card{background:#fff;border-radius:12px;padding:40px;box-shadow:0 2px 12px 0 rgba(0,0,0,0.1);font-size:36px;font-weight:bold;color:#303133;}
+input,button{padding:12px 20px;margin:8px 0;border-radius:6px;border:1px solid #dcdfe6;font-size:16px;}
+button{background:#409eff;color:#fff;border:none;cursor:pointer;}
+.btn-red{background:#F56C6C;}
+.btn-green{background:#67C23A;}
+.btn-orange{background:#f5a623;}
+table{width:100%;border-collapse:collapse;margin:20px 0;}
+th,td{border:1px solid #ebeef5;padding:15px;text-align:center;font-size:16px;}
+th{background:#f5f7fa;font-size:18px;}
+.excel-box{margin:10px 0;}
+.form-item{margin:15px 0;}
+.form-item label{display:inline-block;width:100px;font-size:16px;}
+</style>
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<div class="top-bar">
+<div class="logo">管理员后台</div>
+<div class="user-info">
+<span id="adminName">管理员</span><div class="avatar">管</div>
+</div>
+</div>
+
+<div class="sidebar">
+<div class="menu-item active" onclick="showPage('home')">首页</div>
+<div class="menu-item" onclick="showPage('student')">干事管理</div>
+<div class="menu-item" onclick="showPage('teacher')">部长管理</div>
+<div class="menu-item" onclick="showPage('course')">课程管理</div>
+<div class="menu-item" onclick="showPage('select')">查看选课</div>
+<div class="menu-item" onclick="showPage('unselect')">未选课干事</div>
+<div class="menu-item" onclick="logout()">退出登录</div>
+</div>
+
+<div class="main-content">
+<div class="page active" id="page-home"><div class="welcome-card">欢迎使用管理系统！</div></div>
+<div class="page" id="page-student">
+<h2>干事管理</h2>
+<div class="excel-box">
+<input type="file" id="studentExcel" accept=".xlsx,.xls">
+<button class="btn-green" onclick="importStudentExcel()">批量导入</button>
+<button class="btn-red" onclick="batchDelStudent()" style="margin-left:10px;">批量删除选中干事</button>
+</div>
+<input id="suid" placeholder="学号" style="width:18%">
+<input id="sname" placeholder="姓名" style="width:18%">
+<input id="spwd" placeholder="密码" style="width:18%">
+<input id="sdept" placeholder="所属部门" style="width:18%">
+<button onclick="addStudent()" style="width:18%">提交</button>
+<table>
+<tr><th><input type="checkbox" id="checkAllStudent" onclick="toggleAllStudent()"> 全选</th><th>学号</th><th>姓名</th><th>密码</th><th>所属部门</th><th>操作</th></tr>
+<tbody id="studentList"></tbody>
+</table>
+</div>
+
+<div class="page" id="page-teacher">
+<h2>部长管理</h2>
+<div class="excel-box">
+<input type="file" id="teacherExcel" accept=".xlsx,.xls">
+<button class="btn-green" onclick="importTeacherExcel()">批量导入</button>
+<button class="btn-red" onclick="batchResetTeacherPwd()" style="margin-left:10px;">批量重置选中部长密码</button>
+<button class="btn-red" onclick="batchDelTeacher()" style="margin-left:10px;">批量删除选中部长</button>
+</div>
+<input id="tuid" placeholder="工号" style="width:18%">
+<input id="tname" placeholder="姓名" style="width:18%">
+<input id="tpwd" placeholder="密码" style="width:18%">
+<input id="tdept" placeholder="负责部门" style="width:18%">
+<button onclick="addTeacher()" style="width:18%">提交</button>
+<table>
+<tr><th><input type="checkbox" id="checkAllTeacher" onclick="toggleAllTeacher()"> 全选</th><th>工号</th><th>姓名</th><th>密码</th><th>负责部门</th><th>操作</th></tr>
+<tbody id="teacherList"></tbody>
+</table>
+</div>
+
+<div class="page" id="page-course">
+<h2>课程管理</h2>
+<div class="excel-box">
+<input type="file" id="courseExcel" accept=".xlsx,.xls">
+<button class="btn-green" onclick="importCourseExcel()">批量导入</button>
+<button class="btn-red" onclick="clearCourses()">清空全部</button>
+</div>
+<input id="cname" placeholder="班级名称" style="width:16%">
+<input id="ctime" placeholder="时间" style="width:16%">
+<input id="cloc" placeholder="地点" style="width:16%">
+<input id="cteacher" placeholder="辅导员" style="width:16%">
+<input id="cview" placeholder="可查看时间 例：4-20" style="width:16%">
+<input id="cselect" placeholder="可选择时间 例：4-20" style="width:16%">
+<button onclick="addCourse()" style="width:16%">提交</button>
+<table>
+<tr><th>班级</th><th>时间</th><th>地点</th><th>辅导员</th><th>可查看时间</th><th>可选择时间</th><th>操作</th></tr>
+<tbody id="courseList"></tbody>
+</table>
+</div>
+
+<div class="page" id="page-select">
+<h2>查看选课</h2>
+<button class="btn-green" onclick="exportSelectExcel()">导出选课表</button>
+<table>
+<tr><th>班级</th><th>时间</th><th>地点</th><th>辅导员</th><th>干事</th><th>部门</th></tr>
+<tbody id="selectList"></tbody>
+</table>
+</div>
+
+<div class="page" id="page-unselect">
+<h2>未选课干事名单</h2>
+<button class="btn-orange" onclick="exportUnselectExcel()">导出未选课名单</button>
+<table>
+<tr><th>学号</th><th>姓名</th><th>部门</th></tr>
+<tbody id="unselectList"></tbody>
+</table>
+</div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://nsyonfiaqniensvcrdao.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9uZmlhcW5pZW5zdmNyZGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjIyNDQsImV4cCI6MjA5MTYzODI0NH0.ZxgkRA8Wp2Zy9ujwkya3apTXHECHvmeilf8qf-3MY78"
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const user = JSON.parse(sessionStorage.getItem('user'));
+if(!user || user.role !== 'admin'){alert('请登录');location.href='login.html';}
+
+function $(id){return document.getElementById(id)}
+function showPage(pageId){
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.menu-item').forEach(m=>m.classList.remove('active'));
+    $(`page-${pageId}`).classList.add('active');
+    document.querySelector(`.menu-item[onclick="showPage('${pageId}')"]`).classList.add('active');
+    if(pageId==='student')refreshStudent();
+    if(pageId==='teacher')refreshTeacher();
+    if(pageId==='course')refreshCourse();
+    if(pageId==='select')refreshSelect();
+    if(pageId==='unselect')refreshUnselect();
+}
+function logout(){if(confirm('确定退出？')){sessionStorage.removeItem('user');location.href='login.html';}}
+
+async function refreshSelect(){
+    const {data:courses} = await supabase.from('courses').select('*');
+    const {data:selects} = await supabase.from('selects').select('*');
+    const {data:users} = await supabase.from('users').select('*');
+    let html='';
+    courses.forEach(c=>{
+        let arr=selects.filter(s=>s.cid===c.id).map(s=>s.name+'('+s.uid+')').join(' ')||'无';
+        let depts=selects.filter(s=>s.cid===c.id).map(s=>users.find(x=>x.uid===s.uid)?.dept||'无').join(' ');
+        html+=`<tr><td>${c.name}</td><td>${c.time}</td><td>${c.loc}</td><td>${c.teacher}</td><td>${arr}</td><td>${depts}</td></tr>`;
+    });
+    $('selectList').innerHTML=html||'<tr><td colspan="6">无</td></tr>';
+}
+function exportSelectExcel(){
+    refreshSelect();
+    alert('导出功能保留本地逻辑，云端数据已加载');
+}
+
+async function refreshUnselect(){
+    const {data:users} = await supabase.from('users').select('*');
+    const {data:selects} = await supabase.from('selects').select('*');
+    let students=users.filter(x=>x.role==='user');
+    let selectedUids=[...new Set(selects.map(s=>s.uid))];
+    let unselect=students.filter(s=>!selectedUids.includes(s.uid));
+    let html='';
+    unselect.forEach(s=>{html+=`<tr><td>${s.uid}</td><td>${s.name}</td><td>${s.dept||'无'}</td></tr>`;});
+    $('unselectList').innerHTML=html||'<tr><td colspan="3">全部已选课</td></tr>';
+}
+function exportUnselectExcel(){refreshUnselect();alert('导出功能保留本地逻辑');}
+
+function toggleAllStudent(){let c=$('checkAllStudent').checked;document.querySelectorAll('.studentCheck').forEach(i=>i.checked=c);}
+async function batchDelStudent(){
+    let checks=document.querySelectorAll('.studentCheck:checked');
+    if(checks.length===0){alert('请选择');return;}
+    if(!confirm('确定删除？'))return;
+    let uids=Array.from(checks).map(c=>c.dataset.uid);
+    await supabase.from('users').delete().in('uid',uids);
+    refreshStudent();
+}
+
+function toggleAllTeacher(){let c=$('checkAllTeacher').checked;document.querySelectorAll('.teacherCheck').forEach(i=>i.checked=c);}
+async function batchResetTeacherPwd(){
+    let checks=document.querySelectorAll('.teacherCheck:checked');
+    if(checks.length===0){alert('请选择');return;}
+    let uids=Array.from(checks).map(c=>c.dataset.uid);
+    await supabase.from('users').update({pwd:'666666'}).in('uid',uids);
+    refreshTeacher();
+    alert('重置为666666');
+}
+async function batchDelTeacher(){
+    let checks=document.querySelectorAll('.teacherCheck:checked');
+    if(checks.length===0){alert('请选择');return;}
+    let uids=Array.from(checks).map(c=>c.dataset.uid);
+    await supabase.from('users').delete().in('uid',uids);
+    refreshTeacher();
+}
+
+async function refreshStudent(){
+    const {data}=await supabase.from('users').select('*').eq('role','user');
+    let html='';
+    data.forEach(s=>{
+        html+=`<tr>
+<td><input type="checkbox" class="studentCheck" data-uid="${s.uid}"></td>
+<td>${s.uid}</td><td>${s.name}</td><td>${s.pwd}</td><td>${s.dept||'未设置'}</td>
+<td><button onclick="editStudent('${s.uid}')">修改</button><button class="btn-red" onclick="delStudent('${s.uid}')">删除</button></td>
+</tr>`;
+    });
+    $('studentList').innerHTML=html||'<tr><td colspan="6">无</td></tr>';
+}
+async function addStudent(){
+    let uid=$('suid').value.trim(),name=$('sname').value.trim(),pwd=$('spwd').value.trim(),dept=$('sdept').value.trim();
+    if(!uid||!name||!pwd||!dept){alert('请填写完整');return;}
+    await supabase.from('users').delete().eq('uid',uid);
+    await supabase.from('users').insert([{uid,name,pwd,role:'user',dept}]);
+    $('suid').value=$('sname').value=$('spwd').value=$('sdept').value='';
+    refreshStudent();
+}
+async function editStudent(uid){
+    const {data}=await supabase.from('users').select('*').eq('uid',uid).single();
+    if(data){$('suid').value=data.uid;$('sname').value=data.name;$('spwd').value=data.pwd;$('sdept').value=data.dept||'';}
+}
+async function delStudent(uid){if(!confirm('确定？'))return;await supabase.from('users').delete().eq('uid',uid);refreshStudent();}
+async function importStudentExcel(){
+    let f=$('studentExcel').files[0];if(!f){alert('选择文件');return;}
+    let r=new FileReader();
+    r.onload=async e=>{
+        let wb=XLSX.read(e.target.result,{type:'binary'});
+        let data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:['uid','name','pwd','dept']});
+        data.shift();
+        for(let row of data){
+            if(row.uid&&row.name&&row.pwd){
+                await supabase.from('users').delete().eq('uid',row.uid);
+                await supabase.from('users').insert([{uid:row.uid,name:row.name,pwd:row.pwd,role:'user',dept:row.dept||''}]);
+            }
+        }
+        refreshStudent();alert('导入成功');$('studentExcel').value='';
+    };r.readAsBinaryString(f);
+}
+
+async function refreshTeacher(){
+    const {data}=await supabase.from('users').select('*').eq('role','teacher');
+    let html='';
+    data.forEach(t=>{
+        html+=`<tr>
+<td><input type="checkbox" class="teacherCheck" data-uid="${t.uid}"></td>
+<td>${t.uid}</td><td>${t.name}</td><td>${t.pwd}</td><td>${t.dept||'未设置'}</td>
+<td><button onclick="editTeacher('${t.uid}')">修改</button><button class="btn-red" onclick="delTeacher('${t.uid}')">删除</button></td>
+</tr>`;
+    });
+    $('teacherList').innerHTML=html||'<tr><td colspan="6">无</td></tr>';
+}
+async function addTeacher(){
+    let uid=$('tuid').value.trim(),name=$('tname').value.trim(),pwd=$('tpwd').value.trim(),dept=$('tdept').value.trim();
+    if(!uid||!name||!pwd||!dept){alert('请填写完整');return;}
+    await supabase.from('users').delete().eq('uid',uid);
+    await supabase.from('users').insert([{uid,name,pwd,role:'teacher',dept}]);
+    $('tuid').value=$('tname').value=$('tpwd').value=$('tdept').value='';
+    refreshTeacher();
+}
+async function editTeacher(uid){
+    const {data}=await supabase.from('users').select('*').eq('uid',uid).single();
+    if(data){$('tuid').value=data.uid;$('tname').value=data.name;$('tpwd').value=data.pwd;$('tdept').value=data.dept||'';}
+}
+async function delTeacher(uid){if(!confirm('确定？'))return;await supabase.from('users').delete().eq('uid',uid);refreshTeacher();}
+async function importTeacherExcel(){
+    let f=$('teacherExcel').files[0];if(!f){alert('选择文件');return;}
+    let r=new FileReader();
+    r.onload=async e=>{
+        let wb=XLSX.read(e.target.result,{type:'binary'});
+        let data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:['uid','name','pwd','dept']});
+        data.shift();
+        for(let row of data){
+            if(row.uid&&row.name&&row.pwd){
+                await supabase.from('users').delete().eq('uid',row.uid);
+                await supabase.from('users').insert([{uid:row.uid,name:row.name,pwd:row.pwd,role:'teacher',dept:row.dept||''}]);
+            }
+        }
+        refreshTeacher();alert('导入成功');$('teacherExcel').value='';
+    };r.readAsBinaryString(f);
+}
+
+async function refreshCourse(){
+    const {data}=await supabase.from('courses').select('*');
+    let html='';
+    data.forEach(c=>{
+        html+=`<tr>
+<td>${c.name}</td><td>${c.time}</td><td>${c.loc}</td><td>${c.teacher}</td>
+<td>${c.viewDate||'无限制'}</td><td>${c.selectDate||'无限制'}</td>
+<td><button onclick="editCourse('${c.id}')">修改</button><button class="btn-red" onclick="delCourse('${c.id}')">删除</button></td>
+</tr>`;
+    });
+    $('courseList').innerHTML=html||'<tr><td colspan="7">无</td></tr>';
+}
+async function addCourse(){
+    let name=$('cname').value.trim(),time=$('ctime').value.trim(),loc=$('cloc').value.trim(),teacher=$('cteacher').value.trim();
+    let viewDate=$('cview').value.trim(),selectDate=$('cselect').value.trim();
+    if(!name||!time||!loc||!teacher){alert('请填写完整');return;}
+    let id="course_"+Date.now();
+    await supabase.from('courses').insert([{id,name,time,loc,teacher,viewDate,selectDate}]);
+    $('cname').value=$('ctime').value=$('cloc').value=$('cteacher').value=$('cview').value=$('cselect').value='';
+    refreshCourse();
+}
+async function editCourse(id){
+    const {data}=await supabase.from('courses').select('*').eq('id',id).single();
+    if(data){$('cname').value=data.name;$('ctime').value=data.time;$('cloc').value=data.loc;$('cteacher').value=data.teacher;$('cview').value=data.viewDate||'';$('cselect').value=data.selectDate||'';}
+}
+async function delCourse(id){if(!confirm('确定？'))return;await supabase.from('courses').delete().eq('id',id);refreshCourse();}
+async function clearCourses(){if(!confirm('确定清空？'))return;await supabase.from('courses').delete().gt('id','');refreshCourse();}
+async function importCourseExcel(){
+    let f=$('courseExcel').files[0];if(!f){alert('选择文件');return;}
+    let r=new FileReader();
+    r.onload=async e=>{
+        let wb=XLSX.read(e.target.result,{type:'binary'});
+        let data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:['name','time','loc','teacher','viewDate','selectDate']});
+        data.shift();
+        for(let row of data){
+            if(row.name){
+                let id="c"+Date.now();
+                await supabase.from('courses').insert([{id,name:row.name,time:row.time,loc:row.loc,teacher:row.teacher,viewDate:row.viewDate,selectDate:row.selectDate}]);
+            }
+        }
+        refreshCourse();alert('导入成功');$('courseExcel').value='';
+    };r.readAsBinaryString(f);
+}
+</script>
+</body>
+</html>

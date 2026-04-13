@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录</title>
+<style>
+body{
+    max-width:400px;
+    margin:50px auto;
+    font-family:Arial;
+    background-image:url(https://picsum.photos/id/1050/1920/1080);
+    background-size:cover;
+    background-position:center;
+    background-attachment:fixed;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+.box{
+    padding:30px;
+    border:1px solid #ddd;
+    border-radius:15px;
+    background:rgba(255,255,255,0.92);
+    box-shadow:0 8px 30px rgba(0,0,0,0.1);
+    backdrop-filter:blur(5px);
+}
+input{
+    width:100%;
+    padding:12px;
+    margin:8px 0;
+    border-radius:8px;
+    border:1px solid #ddd;
+    box-sizing:border-box;
+}
+button{
+    width:100%;
+    padding:12px;
+    background:#409eff;
+    color:white;
+    border:none;
+    border-radius:8px;
+    margin-top:5px;
+    cursor:pointer;
+    font-size:15px;
+}
+.btn2{background:#67C23A}
+.btn4{background:#f56c6c;margin-top:5px;}
+.role-group {
+    display: flex;
+    justify-content: space-around;
+    margin: 10px 0;
+    padding: 5px 0;
+}
+.role-group label {
+    display: flex;
+    align-items:center;
+    cursor:pointer;
+    color:#666;
+    font-size:14px;
+}
+.role-group input[type="radio"] {
+    width:16px;
+    height:16px;
+    margin:0 5px 0 0;
+    padding:0;
+}
+.reset-tip-modal {
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.5);
+    align-items:center;
+    justify-content:center;
+    z-index:999;
+}
+.reset-tip-content {
+    width:350px;
+    padding:25px;
+    border-radius:12px;
+    background:rgba(255,255,255,0.95);
+    backdrop-filter:blur(8px);
+    text-align:center;
+    box-shadow:0 5px 20px rgba(0,0,0,0.2);
+    background-image:url(https://picsum.photos/id/1074/800/600);
+    background-size:cover;
+    background-position:center;
+    color:#333;
+}
+.reset-tip-content h3 {
+    margin-bottom:15px;
+    color:#409eff;
+}
+.reset-tip-content p {
+    line-height:1.6;
+    margin:10px 0;
+    background:rgba(255,255,255,0.8);
+    padding:8px;
+    border-radius:6px;
+}
+.reset-tip-close {
+    margin-top:20px;
+    padding:8px 20px;
+    background:#409eff;
+    color:white;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<div class="box">
+<h2>信管系查团课系统</h2>
+<input id="uid" placeholder="学号/工号" maxlength="20">
+<input id="pwd" type="password" placeholder="密码" minlength="6">
+
+<div class="role-group">
+<label><input type="radio" name="role" value="admin" checked> 管理员</label>
+<label><input type="radio" name="role" value="user"> 干事</label>
+<label><input type="radio" name="role" value="teacher"> 部长</label>
+</div>
+
+<button onclick="login()">登录</button>
+<button class="btn2" onclick="location.href='register.html'">干事注册</button>
+<button class="btn4" onclick="showResetTip()">重置密码</button>
+</div>
+
+<div class="reset-tip-modal" id="resetTipModal">
+<div class="reset-tip-content">
+<h3>密码重置指引</h3>
+<p>📚 学生用户：请联系老师申请重置密码</p>
+<p>👨‍🏫 部长用户：请联系系统管理员申请重置密码</p>
+<p>🔑 学生重置后的初始密码为：111111</p>
+<p>🔑 部长重置后的初始密码为：666666</p>
+<button class="reset-tip-close" onclick="closeResetTip()">关闭</button>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://nsyonfiaqniensvcrdao.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9uZmlhcW5pZW5zdmNyZGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjIyNDQsImV4cCI6MjA5MTYzODI0NH0.ZxgkRA8Wp2Zy9ujwkya3apTXHECHvmeilf8qf-3MY78";
+
+// 正确初始化
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function login(){
+    const uid = document.getElementById('uid').value.trim();
+    const pwd = document.getElementById('pwd').value.trim();
+    const role = document.querySelector('input[name="role"]:checked').value;
+
+    if(!uid || !pwd){
+        alert('请输入账号密码');
+        return;
+    }
+
+    const { data: user, error } = await sb
+        .from('users')
+        .select('*')
+        .eq('uid', uid)
+        .eq('pwd', pwd)
+        .eq('role', role)
+        .single();
+
+    if(error || !user){
+        alert('登录失败：账号/密码/角色不匹配');
+        return;
+    }
+
+    sessionStorage.setItem("user", JSON.stringify(user));
+    
+    if(user.role === 'admin') location.href = 'admin.html';
+    else if(user.role === 'user') location.href = 'home.html';
+    else if(user.role === 'teacher') location.href = 'teacher.html';
+}
+
+function showResetTip(){
+    document.getElementById('resetTipModal').style.display='flex';
+}
+function closeResetTip(){
+    document.getElementById('resetTipModal').style.display='none';
+}
+
+document.getElementById('pwd').addEventListener('keydown', function(e) {
+    if(e.key === 'Enter') login();
+});
+</script>
+</body>
+</html>
