@@ -106,7 +106,16 @@ th{background:#f5f7fa;font-size:18px;}
 <script>
 const SUPABASE_URL = "https://nsyonfiaqniensvcrdao.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9uZmlhcW5pZW5zdmNyZGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjIyNDQsImV4cCI6MjA5MTYzODI0NH0.ZxgkRA8Wp2Zy9ujwkya3apTXHECHvmeilf8qf-3MY78";
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ✅ 修复 406 错误的关键代码
+const { createClient } = supabase;
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false
+  }
+});
 
 const t = JSON.parse(sessionStorage.getItem('user'));
 if(!t || t.role !== 'teacher'){alert('请登录');location.href='login.html';}
