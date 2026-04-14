@@ -221,23 +221,69 @@ th{background:#f5f7fa;font-size:18px;}
         refreshStudent();
     };
 
-    window.importStudentExcel = function(){
+    window.importStudentExcel = async function(){
         let f = document.getElementById('studentExcel').files[0];
         if(!f){alert('请选择文件');return;}
+        
         let r = new FileReader();
         r.onload = async e => {
-            let wb = XLSX.read(e.target.result,{type:'binary'});
-            let data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:['uid','name','pwd']});
-            data.shift();
-            for(let row of data){
-                if(row.uid && row.name && row.pwd){
-                    await sb.from('users').delete().eq('uid', String(row.uid)).eq('role', 'user');
-                    await sb.from('users').insert([{uid:String(row.uid), name:String(row.name), pwd:String(row.pwd), role:'user', dept: t.dept}]);
+            try {
+                let wb = XLSX.read(e.target.result, {type:'binary'});
+                let sheet = wb.Sheets[wb.SheetNames[0]];
+                let data = XLSX.utils.sheet_to_json(sheet);
+                
+                console.log('读取到 ' + data.length + ' 条数据');
+                
+                let validData = [];
+                let uids = [];
+                
+                for(let row of data){
+                    let uid = row['学号'] || row['uid'] || row['UID'] || row['工号'];
+                    let name = row['姓名'] || row['name'] || row['Name'];
+                    let pwd = row['密码'] || row['pwd'] || row['PWD'];
+                    
+                    if(uid && name && pwd){
+                        uid = String(uid).trim();
+                        name = String(name).trim();
+                        pwd = String(pwd).trim();
+                        
+                        validData.push({
+                            uid: uid,
+                            name: name,
+                            pwd: pwd,
+                            role: 'user',
+                            dept: t.dept
+                        });
+                        uids.push(uid);
+                    }
                 }
+                
+                console.log('有效数据 ' + validData.length + ' 条');
+                
+                if(validData.length === 0){
+                    alert('没有有效数据');
+                    return;
+                }
+                
+                if(uids.length > 0){
+                    await sb.from('users').delete().in('uid', uids).eq('role', 'user');
+                }
+                
+                const { error } = await sb.from('users').insert(validData);
+                
+                if(error){
+                    console.error('插入错误:', error);
+                    alert('导入失败：' + error.message);
+                    return;
+                }
+                
+                refreshStudent();
+                alert('✅ 导入成功！共导入 ' + validData.length + ' 条数据');
+                document.getElementById('studentExcel').value='';
+            } catch(err) {
+                console.error('导入错误:', err);
+                alert('导入失败：' + err.message);
             }
-            refreshStudent();
-            alert('导入成功');
-            document.getElementById('studentExcel').value='';
         };
         r.readAsBinaryString(f);
     };

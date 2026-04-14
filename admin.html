@@ -130,7 +130,6 @@ th{background:#f5f7fa;font-size:18px;}
 </table>
 </div>
 </div>
-
 <script>
 (function() {
     const SUPABASE_URL = "https://nsyonfiaqniensvcrdao.supabase.co";
@@ -170,14 +169,13 @@ th{background:#f5f7fa;font-size:18px;}
         let html='';
         if(courses){
             courses.forEach(c=>{
-                let arr=selects.filter(s=>s.cid===c.id).map(s=>s.name+'('+s.uid+')').join(' ')||'无';
-                let depts=selects.filter(s=>s.cid===c.id).map(s=>users?.find(x=>x.uid===s.uid)?.dept||'无').join(' ');
+                let arr=(selects||[]).filter(s=>s.cid===c.id).map(s=>s.name+'('+s.uid+')').join(' ')||'无';
+                let depts=(selects||[]).filter(s=>s.cid===c.id).map(s=>users?.find(x=>x.uid===s.uid)?.dept||'无').join(' ');
                 html+=`<tr><td>${c.name}</td><td>${c.time}</td><td>${c.loc}</td><td>${c.teacher}</td><td>${arr}</td><td>${depts}</td></tr>`;
             });
         }
         document.getElementById('selectList').innerHTML=html||'<tr><td colspan="6">无</td></tr>';
     }
-
     window.refreshSelect = refreshSelect;
 
     window.exportSelectExcel = function(){
@@ -203,7 +201,6 @@ th{background:#f5f7fa;font-size:18px;}
         unselect.forEach(s=>{html+=`<tr><td>${s.uid}</td><td>${s.name}</td><td>${s.dept||'无'}</td></tr>`;});
         document.getElementById('unselectList').innerHTML=html||'<tr><td colspan="3">全部已选课</td></tr>';
     }
-
     window.refreshUnselect = refreshUnselect;
 
     window.exportUnselectExcel = function(){
@@ -265,7 +262,6 @@ th{background:#f5f7fa;font-size:18px;}
         }
         document.getElementById('studentList').innerHTML=html||'<tr><td colspan="6">无</td></tr>';
     }
-
     window.refreshStudent = refreshStudent;
 
     window.addStudent = async function(){
@@ -296,21 +292,35 @@ th{background:#f5f7fa;font-size:18px;}
         refreshStudent();
     };
 
-    window.importStudentExcel = function(){
+    window.importStudentExcel = async function(){
         let f = document.getElementById('studentExcel').files[0];
         if(!f){alert('选择文件');return;}
         let r = new FileReader();
         r.onload = async e => {
-            let wb = XLSX.read(e.target.result,{type:'binary'});
-            let data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:['uid','name','pwd','dept']});
-            data.shift();
-            for(let row of data){
-                if(row.uid&&row.name&&row.pwd){
-                    await sb.from('users').delete().eq('uid',String(row.uid)).eq('role','user');
-                    await sb.from('users').insert([{uid:String(row.uid),name:String(row.name),pwd:String(row.pwd),role:'user',dept:row.dept||''}]);
+            try {
+                let wb = XLSX.read(e.target.result,{type:'binary'});
+                let sheet = wb.Sheets[wb.SheetNames[0]];
+                let data = XLSX.utils.sheet_to_json(sheet);
+                let validData = [], uids = [];
+                for(let row of data){
+                    let uid = row['学号'] || row['uid'] || row['UID'] || row['工号'];
+                    let name = row['姓名'] || row['name'] || row['Name'];
+                    let pwd = row['密码'] || row['pwd'] || row['PWD'];
+                    let dept = row['所属部门'] || row['dept'] || row['部门'] || '';
+                    if(uid && name && pwd){
+                        uid = String(uid).trim(); name = String(name).trim(); pwd = String(pwd).trim(); dept = String(dept).trim();
+                        validData.push({uid, name, pwd, role:'user', dept: dept||'未设置'});
+                        uids.push(uid);
+                    }
                 }
-            }
-            refreshStudent();alert('导入成功');document.getElementById('studentExcel').value='';
+                if(validData.length===0){alert('没有有效数据');return;}
+                if(uids.length>0){await sb.from('users').delete().in('uid',uids).eq('role','user');}
+                const {error} = await sb.from('users').insert(validData);
+                if(error){alert('导入失败：'+error.message);return;}
+                refreshStudent();
+                alert('✅ 导入成功！共导入 '+validData.length+' 条数据');
+                document.getElementById('studentExcel').value='';
+            } catch(err){ alert('导入失败：'+err.message); }
         };
         r.readAsBinaryString(f);
     };
@@ -325,7 +335,6 @@ th{background:#f5f7fa;font-size:18px;}
         }
         document.getElementById('teacherList').innerHTML=html||'<tr><td colspan="6">无</td></tr>';
     }
-
     window.refreshTeacher = refreshTeacher;
 
     window.addTeacher = async function(){
@@ -356,21 +365,35 @@ th{background:#f5f7fa;font-size:18px;}
         refreshTeacher();
     };
 
-    window.importTeacherExcel = function(){
+    window.importTeacherExcel = async function(){
         let f = document.getElementById('teacherExcel').files[0];
         if(!f){alert('选择文件');return;}
         let r = new FileReader();
         r.onload = async e => {
-            let wb = XLSX.read(e.target.result,{type:'binary'});
-            let data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:['uid','name','pwd','dept']});
-            data.shift();
-            for(let row of data){
-                if(row.uid&&row.name&&row.pwd){
-                    await sb.from('users').delete().eq('uid',String(row.uid)).eq('role','teacher');
-                    await sb.from('users').insert([{uid:String(row.uid),name:String(row.name),pwd:String(row.pwd),role:'teacher',dept:row.dept||''}]);
+            try {
+                let wb = XLSX.read(e.target.result,{type:'binary'});
+                let sheet = wb.Sheets[wb.SheetNames[0]];
+                let data = XLSX.utils.sheet_to_json(sheet);
+                let validData = [], uids = [];
+                for(let row of data){
+                    let uid = row['工号'] || row['uid'] || row['UID'] || row['学号'];
+                    let name = row['姓名'] || row['name'] || row['Name'];
+                    let pwd = row['密码'] || row['pwd'] || row['PWD'];
+                    let dept = row['负责部门'] || row['dept'] || row['部门'] || '';
+                    if(uid && name && pwd){
+                        uid = String(uid).trim(); name = String(name).trim(); pwd = String(pwd).trim(); dept = String(dept).trim();
+                        validData.push({uid, name, pwd, role:'teacher', dept: dept||'未设置'});
+                        uids.push(uid);
+                    }
                 }
-            }
-            refreshTeacher();alert('导入成功');document.getElementById('teacherExcel').value='';
+                if(validData.length===0){alert('没有有效数据');return;}
+                if(uids.length>0){await sb.from('users').delete().in('uid',uids).eq('role','teacher');}
+                const {error} = await sb.from('users').insert(validData);
+                if(error){alert('导入失败：'+error.message);return;}
+                refreshTeacher();
+                alert('✅ 导入成功！共导入 '+validData.length+' 条数据');
+                document.getElementById('teacherExcel').value='';
+            } catch(err){ alert('导入失败：'+err.message); }
         };
         r.readAsBinaryString(f);
     };
@@ -385,7 +408,6 @@ th{background:#f5f7fa;font-size:18px;}
         }
         document.getElementById('courseList').innerHTML=html||'<tr><td colspan="7">无</td></tr>';
     }
-
     window.refreshCourse = refreshCourse;
 
     window.addCourse = async function(){
