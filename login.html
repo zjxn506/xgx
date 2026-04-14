@@ -157,21 +157,8 @@ button{
     const SUPABASE_URL = "https://nsyonfiaqniensvcrdao.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9uZmlhcW5pZW5zdmNyZGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjIyNDQsImV4cCI6MjA5MTYzODI0NH0.ZxgkRA8Wp2Zy9ujwkya3apTXHECHvmeilf8qf-3MY78";
 
-    const { createClient } = supabase;
-    const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
-        auth: {
-            persistSession: true,
-            autoRefreshToken: true,
-            detectSessionInUrl: true,
-            storage: window.localStorage
-        },
-        global: {
-            headers: {
-                Accept: 'application/json',
-                'Content-Type': 'application/json'
-            }
-        }
-    });
+    // 最简单的初始化方式，不添加额外配置
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     window.login = async function() {
         const uid = document.getElementById('uid').value.trim();
@@ -195,7 +182,7 @@ button{
 
             if(error) {
                 console.error('查询错误:', error);
-                errorDiv.textContent = '系统错误，请稍后重试';
+                errorDiv.textContent = '系统错误：' + error.message;
                 return;
             }
 
