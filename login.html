@@ -48,6 +48,7 @@ button{
 .btn2{background:#67C23A}
 .btn4{background:#f56c6c;margin-top:5px;}
 .btn5{background:#e6a23c;margin-top:5px;}
+.btn6{background:#909399;margin-top:5px;}
 .role-group {
     display: flex;
     justify-content: space-around;
@@ -131,8 +132,9 @@ button{
     background: #f5f7fa;
     border-radius: 8px;
     font-size: 12px;
-    max-height: 150px;
+    max-height: 200px;
     overflow-y: auto;
+    text-align: left;
 }
 </style>
 </head>
@@ -153,12 +155,13 @@ button{
 <div id="loginSuccess" class="success-msg"></div>
 
 <button onclick="login()">登录</button>
-<button class="btn5" onclick="checkDatabase()">🔍 检查数据库</button>
-<button class="btn5" onclick="createAdmin()">⚡ 创建管理员</button>
+<button class="btn5" onclick="checkAllTables()">🔍 检查所有表</button>
+<button class="btn5" onclick="forceCreateAdmin()">⚡ 强制创建管理员</button>
+<button class="btn6" onclick="testDirectQuery()">🧪 测试直接查询</button>
 <button class="btn2" onclick="location.href='register.html'">干事注册</button>
-<button class="btn4" onclick="showResetTip()">重置密码</button>
+<button class="btn4" onclick="showResetTip()">重置密码指引</button>
 
-<div id="debugInfo" class="debug-info" style="display:none;"></div>
+<div id="debugInfo" class="debug-info"></div>
 </div>
 
 <div class="reset-tip-modal" id="resetTipModal">
@@ -179,93 +182,160 @@ button{
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9uZmlhcW5pZW5zdmNyZGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjIyNDQsImV4cCI6MjA5MTYzODI0NH0.ZxgkRA8Wp2Zy9ujwkya3apTXHECHvmeilf8qf-3MY78";
 
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const debugDiv = document.getElementById('debugInfo');
 
-    function showDebug(text) {
-        const debugDiv = document.getElementById('debugInfo');
-        debugDiv.style.display = 'block';
-        debugDiv.innerHTML = text;
+    function log(msg) {
+        debugDiv.innerHTML += msg + '<br>';
+        debugDiv.scrollTop = debugDiv.scrollHeight;
     }
 
-    // 检查数据库中有哪些用户
-    window.checkDatabase = async function() {
-        showDebug('正在查询数据库...');
+    function clearLog() {
+        debugDiv.innerHTML = '';
+    }
+
+    // 测试直接查询（不使用任何过滤条件）
+    window.testDirectQuery = async function() {
+        clearLog();
+        log('🧪 测试直接查询 users 表（无过滤条件）...');
         
         try {
-            const { data: users, error } = await sb
+            const { data, error, status } = await sb
                 .from('users')
-                .select('*');
+                .select('*')
+                .limit(10);
+            
+            log('状态码: ' + status);
             
             if(error) {
-                showDebug('❌ 查询失败：' + error.message);
+                log('❌ 错误: ' + error.message);
+                log('错误详情: ' + JSON.stringify(error));
                 return;
             }
             
-            if(!users || users.length === 0) {
-                showDebug('📭 数据库 users 表是空的，没有任何用户。<br><br>点击"创建管理员"按钮添加管理员账号。');
-                return;
+            if(!data || data.length === 0) {
+                log('📭 users 表是空的');
+            } else {
+                log('✅ 找到 ' + data.length + ' 条数据:');
+                data.forEach((row, i) => {
+                    log(`  ${i+1}. uid="${row.uid}", name="${row.name}", role="${row.role}", pwd="${row.pwd}"`);
+                });
             }
-            
-            let html = `✅ 找到 ${users.length} 个用户：<br><br>`;
-            users.forEach((u, i) => {
-                html += `${i+1}. uid: ${u.uid}, 姓名: ${u.name}, 角色: ${u.role}, 密码: ${u.pwd}<br>`;
-            });
-            showDebug(html);
         } catch(err) {
-            showDebug('❌ 异常：' + err.message);
+            log('❌ 异常: ' + err.message);
         }
     };
 
-    // 创建管理员账号
-    window.createAdmin = async function() {
-        showDebug('正在创建管理员账号...');
+    // 检查所有可能的表
+    window.checkAllTables = async function() {
+        clearLog();
+        log('🔍 正在检查数据库...');
+        
+        const tables = ['users', 'profiles', 'user', 'accounts', 'User', 'Users'];
+        
+        for(let table of tables) {
+            try {
+                const { data, error } = await sb.from(table).select('count', { count: 'exact', head: true });
+                if(!error) {
+                    log('✅ 表 "' + table + '" 存在');
+                    
+                    // 尝试读取数据
+                    const { data: rows } = await sb.from(table).select('*').limit(5);
+                    if(rows && rows.length > 0) {
+                        log(`   数据示例: ${JSON.stringify(rows[0]).substring(0, 100)}...`);
+                    }
+                } else if(error.code !== '42P01') { // 42P01 = 表不存在
+                    log('⚠️ 表 "' + table + '": ' + error.message);
+                }
+            } catch(e) {
+                // 表不存在，跳过
+            }
+        }
+        
+        // 重点检查 users 表
+        log('');
+        log('📋 详细检查 users 表:');
+        const { data, error } = await sb.from('users').select('*');
+        
+        if(error) {
+            log('❌ users 表查询失败: ' + error.message);
+            log('错误码: ' + error.code);
+            log('提示: ' + error.hint);
+        } else if(!data || data.length === 0) {
+            log('📭 users 表存在但是空的');
+        } else {
+            log('✅ users 表有 ' + data.length + ' 条数据:');
+            data.forEach(row => {
+                log(`  - uid: "${row.uid}", name: "${row.name}", role: "${row.role}", pwd: "${row.pwd}"`);
+            });
+        }
+    };
+
+    // 强制创建管理员
+    window.forceCreateAdmin = async function() {
+        clearLog();
+        log('⚡ 强制创建管理员账号...');
+        
+        const adminData = {
+            uid: 'admin',
+            name: '管理员',
+            pwd: '123456',
+            role: 'admin',
+            dept: '系统'
+        };
+        
+        log('准备插入数据: ' + JSON.stringify(adminData));
         
         try {
-            // 先检查是否已存在
-            const { data: existing } = await sb
+            // 先尝试删除旧数据
+            const { error: delError } = await sb
                 .from('users')
-                .select('uid')
-                .eq('uid', 'admin')
-                .maybeSingle();
+                .delete()
+                .eq('uid', 'admin');
             
-            if(existing) {
-                // 更新密码
-                const { error: updateError } = await sb
-                    .from('users')
-                    .update({ pwd: '123456' })
-                    .eq('uid', 'admin');
+            if(delError) {
+                log('⚠️ 删除旧数据失败: ' + delError.message);
+            } else {
+                log('✅ 已删除旧的管理员数据');
+            }
+            
+            // 插入新数据
+            const { data, error } = await sb
+                .from('users')
+                .insert([adminData])
+                .select();
+            
+            if(error) {
+                log('❌ 插入失败: ' + error.message);
+                log('错误详情: ' + JSON.stringify(error));
                 
-                if(updateError) {
-                    showDebug('❌ 更新失败：' + updateError.message);
+                // 尝试用 upsert
+                log('');
+                log('🔄 尝试使用 upsert...');
+                const { error: upsertError } = await sb
+                    .from('users')
+                    .upsert([adminData], { onConflict: 'uid' });
+                
+                if(upsertError) {
+                    log('❌ upsert 也失败了: ' + upsertError.message);
                 } else {
-                    showDebug('✅ 管理员已存在，密码已重置为 123456<br><br>现在可以用 admin/123456 登录了');
+                    log('✅ upsert 成功！');
                     document.getElementById('uid').value = 'admin';
                     document.getElementById('pwd').value = '123456';
                 }
                 return;
             }
             
-            // 创建新管理员
-            const { error } = await sb
-                .from('users')
-                .insert([{
-                    uid: 'admin',
-                    name: '管理员',
-                    pwd: '123456',
-                    role: 'admin',
-                    dept: '系统'
-                }]);
+            log('✅ 管理员创建成功！');
+            log('返回数据: ' + JSON.stringify(data));
             
-            if(error) {
-                showDebug('❌ 创建失败：' + error.message);
-                return;
-            }
-            
-            showDebug('✅ 管理员账号创建成功！<br><br>账号：admin<br>密码：123456<br><br>已自动填入，直接点击登录即可。');
             document.getElementById('uid').value = 'admin';
             document.getElementById('pwd').value = '123456';
             document.querySelector('input[value="admin"]').checked = true;
+            
+            log('');
+            log('🎉 账号: admin，密码: 123456，可以直接登录了！');
         } catch(err) {
-            showDebug('❌ 异常：' + err.message);
+            log('❌ 异常: ' + err.message);
         }
     };
 
@@ -278,13 +348,8 @@ button{
 
         errorDiv.textContent = '';
         successDiv.textContent = '';
-
-        if(!uid || !pwd){
-            errorDiv.textContent = '请输入账号和密码';
-            return;
-        }
-
-        showDebug('正在登录：' + uid);
+        clearLog();
+        log('🔐 尝试登录: ' + uid);
 
         try {
             const { data: user, error } = await sb
@@ -294,35 +359,33 @@ button{
                 .maybeSingle();
 
             if(error) {
-                console.error('查询错误:', error);
-                errorDiv.textContent = '系统错误：' + error.message;
-                showDebug('❌ 查询错误：' + error.message);
+                log('❌ 查询错误: ' + error.message);
+                errorDiv.textContent = '系统错误';
                 return;
             }
 
             if(!user) {
+                log('❌ 用户不存在: ' + uid);
                 errorDiv.textContent = '账号不存在';
-                showDebug('❌ 账号 "' + uid + '" 不存在<br><br>点击"检查数据库"查看所有用户，或点击"创建管理员"添加账号。');
                 return;
             }
 
-            showDebug('✅ 找到用户：' + user.uid + '，角色：' + user.role);
+            log('✅ 找到用户: ' + user.uid + ', 角色: ' + user.role);
 
             if(user.pwd !== pwd) {
+                log('❌ 密码错误，正确密码是: ' + user.pwd);
                 errorDiv.textContent = '密码错误';
-                showDebug('❌ 密码错误，正确密码是：' + user.pwd);
                 return;
             }
 
             if(user.role !== role) {
-                const roleNames = {admin:'管理员', teacher:'部长', user:'干事'};
-                errorDiv.textContent = `角色不匹配，您是${roleNames[user.role]}`;
-                showDebug(`❌ 角色不匹配，您选择的是"${role}"，但实际是"${user.role}"`);
+                log('❌ 角色不匹配，实际是: ' + user.role);
+                errorDiv.textContent = '角色不匹配';
                 return;
             }
 
-            successDiv.textContent = '登录成功！正在跳转...';
-            showDebug('✅ 登录成功！');
+            log('✅ 登录成功！');
+            successDiv.textContent = '登录成功！';
 
             const safeUser = {
                 uid: user.uid,
@@ -333,18 +396,13 @@ button{
             sessionStorage.setItem("user", JSON.stringify(safeUser));
             
             setTimeout(() => {
-                if(user.role === 'admin') {
-                    location.href = 'admin.html';
-                } else if(user.role === 'user') {
-                    location.href = 'home.html';
-                } else if(user.role === 'teacher') {
-                    location.href = 'teacher.html';
-                }
+                if(user.role === 'admin') location.href = 'admin.html';
+                else if(user.role === 'user') location.href = 'home.html';
+                else if(user.role === 'teacher') location.href = 'teacher.html';
             }, 500);
         } catch(err) {
-            console.error('登录异常:', err);
-            errorDiv.textContent = '网络错误，请稍后重试';
-            showDebug('❌ 异常：' + err.message);
+            log('❌ 异常: ' + err.message);
+            errorDiv.textContent = '网络错误';
         }
     };
 
@@ -360,9 +418,10 @@ button{
         if(e.key === 'Enter') window.login();
     });
 
-    // 页面加载时自动检查数据库
+    // 页面加载时自动测试
     setTimeout(() => {
-        checkDatabase();
+        clearLog();
+        log('🚀 页面加载完成，点击按钮测试数据库');
     }, 500);
 })();
 </script>
