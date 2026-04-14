@@ -143,6 +143,51 @@ th{background:#f5f7fa;font-size:18px;}
     if(!user || user.role !== 'admin'){alert('请登录');location.href='login.html';}
     document.getElementById('adminName').innerText = user.name || '管理员';
 
+    // ========== 单点登录检测 ==========
+    let checkInterval = null;
+
+    async function checkSession() {
+        if(!user) return;
+        
+        try {
+            const { data, error } = await sb
+                .from('users')
+                .select('session_token')
+                .eq('uid', user.uid)
+                .maybeSingle();
+            
+            if(error) return;
+            
+            // 如果数据库中的 token 与当前不一致，说明被踢下线
+            if(data && data.session_token && data.session_token !== user.session_token) {
+                clearInterval(checkInterval);
+                sessionStorage.removeItem('user');
+                
+                // 显示被踢提示
+                const kickModal = document.createElement('div');
+                kickModal.style.cssText = 'display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;z-index:10000;';
+                kickModal.innerHTML = `
+                    <div style="width:350px;padding:30px;border-radius:12px;background:#fff;text-align:center;">
+                        <h3 style="color:#f56c6c;margin-bottom:15px;">⚠️ 登录失效</h3>
+                        <p style="margin-bottom:20px;color:#666;">您的账号已在其他地方登录</p>
+                        <button onclick="location.href='login.html'" style="width:120px;padding:10px;background:#409eff;color:#fff;border:none;border-radius:6px;cursor:pointer;">重新登录</button>
+                    </div>
+                `;
+                document.body.appendChild(kickModal);
+            } else {
+                // 更新最后活动时间（可选）
+                await sb.from('users')
+                    .update({ last_active: new Date().toISOString() })
+                    .eq('uid', user.uid);
+            }
+        } catch(err) {
+            console.error('Session check error:', err);
+        }
+    }
+
+    // 启动定时检查（每5秒检查一次）
+    checkInterval = setInterval(checkSession, 5000);
+
     window.$ = function(id){return document.getElementById(id);};
     
     window.showPage = function(pageId){
@@ -157,8 +202,15 @@ th{background:#f5f7fa;font-size:18px;}
         if(pageId==='unselect') refreshUnselect();
     };
 
-    window.logout = function(){
+    window.logout = async function(){
         if(confirm('确定退出？')){
+            clearInterval(checkInterval);
+            // 清除数据库中的 token
+            if(user){
+                await sb.from('users')
+                    .update({ session_token: null })
+                    .eq('uid', user.uid);
+            }
             sessionStorage.removeItem('user');
             location.href='login.html';
         }
@@ -261,7 +313,6 @@ th{background:#f5f7fa;font-size:18px;}
                     return;
                 }
                 
-                // 使用 upsert 逐条处理（有则更新，无则插入）
                 let success = 0;
                 let failed = [];
                 
@@ -286,7 +337,7 @@ th{background:#f5f7fa;font-size:18px;}
                     alert('✅ 导入成功！共 ' + success + ' 条');
                 }
                 
-                refreshStudent();
+                setTimeout(() => refreshStudent(), 500);
                 document.getElementById('studentExcel').value='';
             } catch(err) {
                 console.error('导入错误:', err);
@@ -403,7 +454,6 @@ th{background:#f5f7fa;font-size:18px;}
                     return;
                 }
                 
-                // 使用 upsert 逐条处理
                 let success = 0;
                 let failed = [];
                 
@@ -428,7 +478,7 @@ th{background:#f5f7fa;font-size:18px;}
                     alert('✅ 导入成功！共 ' + success + ' 条');
                 }
                 
-                refreshTeacher();
+                setTimeout(() => refreshTeacher(), 500);
                 document.getElementById('teacherExcel').value='';
             } catch(err) {
                 console.error('导入错误:', err);

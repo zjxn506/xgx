@@ -113,6 +113,43 @@ th{background:#f5f7fa;font-size:18px;}
     const t = JSON.parse(sessionStorage.getItem('user'));
     if(!t || t.role !== 'teacher'){alert('请登录');location.href='login.html';}
 
+    // ========== 单点登录检测 ==========
+    let checkInterval = null;
+
+    async function checkSession() {
+        if(!t) return;
+        
+        try {
+            const { data, error } = await sb
+                .from('users')
+                .select('session_token')
+                .eq('uid', t.uid)
+                .maybeSingle();
+            
+            if(error) return;
+            
+            if(data && data.session_token && data.session_token !== t.session_token) {
+                clearInterval(checkInterval);
+                sessionStorage.removeItem('user');
+                
+                const kickModal = document.createElement('div');
+                kickModal.style.cssText = 'display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;z-index:10000;';
+                kickModal.innerHTML = `
+                    <div style="width:350px;padding:30px;border-radius:12px;background:#fff;text-align:center;">
+                        <h3 style="color:#f56c6c;margin-bottom:15px;">⚠️ 登录失效</h3>
+                        <p style="margin-bottom:20px;color:#666;">您的账号已在其他地方登录</p>
+                        <button onclick="location.href='login.html'" style="width:120px;padding:10px;background:#409eff;color:#fff;border:none;border-radius:6px;cursor:pointer;">重新登录</button>
+                    </div>
+                `;
+                document.body.appendChild(kickModal);
+            }
+        } catch(err) {
+            console.error('Session check error:', err);
+        }
+    }
+
+    checkInterval = setInterval(checkSession, 5000);
+
     document.getElementById('teacherName').innerText = t.name;
     document.getElementById('teacherAvatar').innerText = t.name.charAt(0);
     document.getElementById('welcomeText').innerText = `欢迎回来，${t.name}！`;
@@ -161,8 +198,12 @@ th{background:#f5f7fa;font-size:18px;}
         if(pageId==='student') refreshStudent();
     };
 
-    window.logout = function(){
+    window.logout = async function(){
         if(confirm('确定退出？')){
+            clearInterval(checkInterval);
+            if(t){
+                await sb.from('users').update({ session_token: null }).eq('uid', t.uid);
+            }
             sessionStorage.removeItem('user');
             location.href='login.html';
         }
@@ -170,6 +211,7 @@ th{background:#f5f7fa;font-size:18px;}
 
     window.deleteTeacherAccount = async function() {
         if (!confirm("⚠️ 确定要永久注销当前账号吗？")) return;
+        clearInterval(checkInterval);
         await sb.from('users').delete().eq('uid', t.uid).eq('role', 'teacher');
         sessionStorage.removeItem('user');
         alert("✅ 账号注销成功！");
@@ -198,8 +240,7 @@ th{background:#f5f7fa;font-size:18px;}
         let dept = t.dept;
         if(!uid||!name||!pwd){alert('请填写完整');return;}
         if(pwd.length<6){alert('密码至少6位');return;}
-        await sb.from('users').delete().eq('uid', uid).eq('role', 'user');
-        await sb.from('users').insert([{ uid, name, pwd, role: 'user', dept }]);
+        await sb.from('users').upsert([{ uid, name, pwd, role: 'user', dept }], {onConflict: 'uid'});
         document.getElementById('suid').value='';
         document.getElementById('sname').value='';
         document.getElementById('spwd').value='';
@@ -232,10 +273,7 @@ th{background:#f5f7fa;font-size:18px;}
                 let sheet = wb.Sheets[wb.SheetNames[0]];
                 let data = XLSX.utils.sheet_to_json(sheet);
                 
-                console.log('读取到 ' + data.length + ' 条数据');
-                
                 let validData = [];
-                let uids = [];
                 
                 for(let row of data){
                     let uid = row['学号'] || row['uid'] || row['UID'] || row['工号'];
@@ -243,45 +281,28 @@ th{background:#f5f7fa;font-size:18px;}
                     let pwd = row['密码'] || row['pwd'] || row['PWD'];
                     
                     if(uid && name && pwd){
-                        uid = String(uid).trim();
-                        name = String(name).trim();
-                        pwd = String(pwd).trim();
-                        
                         validData.push({
-                            uid: uid,
-                            name: name,
-                            pwd: pwd,
+                            uid: String(uid).trim(),
+                            name: String(name).trim(),
+                            pwd: String(pwd).trim(),
                             role: 'user',
                             dept: t.dept
                         });
-                        uids.push(uid);
                     }
                 }
                 
-                console.log('有效数据 ' + validData.length + ' 条');
+                if(validData.length === 0){alert('没有有效数据');return;}
                 
-                if(validData.length === 0){
-                    alert('没有有效数据');
-                    return;
-                }
-                
-                if(uids.length > 0){
-                    await sb.from('users').delete().in('uid', uids).eq('role', 'user');
-                }
-                
-                const { error } = await sb.from('users').insert(validData);
-                
-                if(error){
-                    console.error('插入错误:', error);
-                    alert('导入失败：' + error.message);
-                    return;
+                let success = 0;
+                for(let item of validData){
+                    const { error } = await sb.from('users').upsert([item], {onConflict: 'uid'});
+                    if(!error) success++;
                 }
                 
                 refreshStudent();
-                alert('✅ 导入成功！共导入 ' + validData.length + ' 条数据');
+                alert('✅ 导入成功！共 ' + success + ' 条');
                 document.getElementById('studentExcel').value='';
             } catch(err) {
-                console.error('导入错误:', err);
                 alert('导入失败：' + err.message);
             }
         };

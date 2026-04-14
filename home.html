@@ -81,6 +81,43 @@ input{width:100%;padding:10px;margin:5px 0;border:1px solid #ddd;border-radius:4
     const u = JSON.parse(sessionStorage.getItem('user'));
     if(!u || u.role !== 'user'){alert('请登录');location.href='login.html';}
 
+    // ========== 单点登录检测 ==========
+    let checkInterval = null;
+
+    async function checkSession() {
+        if(!u) return;
+        
+        try {
+            const { data, error } = await sb
+                .from('users')
+                .select('session_token')
+                .eq('uid', u.uid)
+                .maybeSingle();
+            
+            if(error) return;
+            
+            if(data && data.session_token && data.session_token !== u.session_token) {
+                clearInterval(checkInterval);
+                sessionStorage.removeItem('user');
+                
+                const kickModal = document.createElement('div');
+                kickModal.style.cssText = 'display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;z-index:10000;';
+                kickModal.innerHTML = `
+                    <div style="width:350px;padding:30px;border-radius:12px;background:#fff;text-align:center;">
+                        <h3 style="color:#f56c6c;margin-bottom:15px;">⚠️ 登录失效</h3>
+                        <p style="margin-bottom:20px;color:#666;">您的账号已在其他地方登录</p>
+                        <button onclick="location.href='login.html'" style="width:120px;padding:10px;background:#409eff;color:#fff;border:none;border-radius:6px;cursor:pointer;">重新登录</button>
+                    </div>
+                `;
+                document.body.appendChild(kickModal);
+            }
+        } catch(err) {
+            console.error('Session check error:', err);
+        }
+    }
+
+    checkInterval = setInterval(checkSession, 5000);
+
     const now = new Date();
     const today = (now.getMonth()+1)+"-"+now.getDate();
     document.getElementById('studentName').innerText = u.name;
@@ -97,13 +134,18 @@ input{width:100%;padding:10px;margin:5px 0;border:1px solid #ddd;border-radius:4
         if(id==='my') loadMyCourses();
     };
 
-    window.logout = function(){
+    window.logout = async function(){
+        clearInterval(checkInterval);
+        if(u){
+            await sb.from('users').update({ session_token: null }).eq('uid', u.uid);
+        }
         sessionStorage.removeItem('user');
         location.href='login.html';
     };
 
     window.deleteAccount = async function() {
         if(!confirm("确定注销？"))return;
+        clearInterval(checkInterval);
         await sb.from('users').delete().eq('uid',u.uid);
         await sb.from('selects').delete().eq('uid',u.uid);
         sessionStorage.removeItem('user');

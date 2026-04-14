@@ -134,6 +134,36 @@ button{
     overflow-y: auto;
     text-align: left;
 }
+.kick-modal {
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.7);
+    align-items:center;
+    justify-content:center;
+    z-index:1000;
+}
+.kick-content {
+    width:350px;
+    padding:30px;
+    border-radius:12px;
+    background:#fff;
+    text-align:center;
+}
+.kick-content h3 {
+    color: #f56c6c;
+    margin-bottom:15px;
+}
+.kick-content p {
+    margin-bottom:20px;
+    color:#666;
+}
+.kick-content button {
+    width:120px;
+}
 </style>
 </head>
 <body>
@@ -170,6 +200,15 @@ button{
 </div>
 </div>
 
+<!-- 被踢下线提示框 -->
+<div class="kick-modal" id="kickModal">
+<div class="kick-content">
+<h3>⚠️ 登录失效</h3>
+<p id="kickMessage">您的账号已在其他地方登录</p>
+<button onclick="location.href='login.html'">重新登录</button>
+</div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function() {
@@ -186,6 +225,11 @@ button{
 
     function clearLog() {
         debugDiv.innerHTML = '';
+    }
+
+    // 生成唯一 token
+    function generateToken() {
+        return Date.now() + '-' + Math.random().toString(36).substr(2, 10);
     }
 
     window.login = async function() {
@@ -233,6 +277,24 @@ button{
                 return;
             }
 
+            // 生成新 token
+            const newToken = generateToken();
+            
+            // 更新用户的 session_token
+            const { error: updateError } = await sb
+                .from('users')
+                .update({ 
+                    session_token: newToken,
+                    last_active: new Date().toISOString()
+                })
+                .eq('uid', uid);
+
+            if(updateError) {
+                log('⚠️ token 更新失败: ' + updateError.message);
+            } else {
+                log('✅ 登录 token 已更新');
+            }
+
             log('✅ 登录成功！');
             successDiv.textContent = '登录成功！';
 
@@ -240,7 +302,8 @@ button{
                 uid: user.uid,
                 name: user.name,
                 role: user.role,
-                dept: user.dept
+                dept: user.dept,
+                session_token: newToken  // 保存 token
             };
             sessionStorage.setItem("user", JSON.stringify(safeUser));
             
@@ -267,7 +330,6 @@ button{
         if(e.key === 'Enter') window.login();
     });
 
-    // 页面加载时显示欢迎信息
     setTimeout(() => {
         clearLog();
         log('🚀 系统已就绪，请输入账号密码登录');
