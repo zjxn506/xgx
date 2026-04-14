@@ -200,8 +200,8 @@ th{background:#f5f7fa;font-size:18px;}
         if(!uid||!name||!pwd||!dept){alert('请填写完整');return;}
         if(pwd.length<6){alert('密码至少6位');return;}
         
-        await sb.from('users').delete().eq('uid',uid);
-        await sb.from('users').insert([{uid,name,pwd,role:'user',dept}]);
+        const { error } = await sb.from('users').upsert([{uid,name,pwd,role:'user',dept}], {onConflict: 'uid'});
+        if(error){alert('添加失败：'+error.message);return;}
         document.getElementById('suid').value=document.getElementById('sname').value=document.getElementById('spwd').value=document.getElementById('sdept').value='';
         refreshStudent();
         alert('添加成功');
@@ -237,7 +237,6 @@ th{background:#f5f7fa;font-size:18px;}
                 console.log('读取到 ' + data.length + ' 条数据');
                 
                 let validData = [];
-                let uids = [];
                 
                 for(let row of data){
                     let uid = row['学号'] || row['uid'] || row['UID'] || row['工号'] || row['id'];
@@ -252,11 +251,9 @@ th{background:#f5f7fa;font-size:18px;}
                         dept = String(dept).trim();
                         
                         validData.push({uid, name, pwd, role:'user', dept: dept||'未设置'});
-                        uids.push(uid);
                     }
                 }
                 
-                uids = [...new Set(uids)];
                 console.log('有效数据 ' + validData.length + ' 条');
                 
                 if(validData.length === 0){
@@ -264,28 +261,29 @@ th{background:#f5f7fa;font-size:18px;}
                     return;
                 }
                 
-                // 先删除已存在的
-                if(uids.length > 0){
-                    console.log('删除已存在的干事...');
-                    await sb.from('users').delete().in('uid', uids).eq('role', 'user');
+                // 使用 upsert 逐条处理（有则更新，无则插入）
+                let success = 0;
+                let failed = [];
+                
+                for(let item of validData){
+                    try {
+                        const { error } = await sb.from('users').upsert([item], {onConflict: 'uid'});
+                        if(!error){
+                            success++;
+                        } else {
+                            failed.push(item.uid);
+                        }
+                    } catch(err) {
+                        failed.push(item.uid);
+                    }
                 }
                 
-                // 批量插入
-                const { error } = await sb.from('users').insert(validData);
+                console.log('导入完成：成功 ' + success + ' 条，失败 ' + failed.length + ' 条');
                 
-                if(error){
-                    console.warn('批量插入失败，逐条处理:', error);
-                    let success = 0;
-                    for(let item of validData){
-                        try {
-                            await sb.from('users').delete().eq('uid', item.uid);
-                            const { error: e2 } = await sb.from('users').insert([item]);
-                            if(!e2) success++;
-                        } catch(err) {}
-                    }
-                    alert('导入完成！成功 ' + success + '/' + validData.length + ' 条');
+                if(failed.length > 0){
+                    alert('导入完成！成功 ' + success + ' 条\n失败学号：' + failed.slice(0,10).join(', ') + (failed.length>10?'...':''));
                 } else {
-                    alert('✅ 导入成功！共 ' + validData.length + ' 条');
+                    alert('✅ 导入成功！共 ' + success + ' 条');
                 }
                 
                 refreshStudent();
@@ -344,8 +342,8 @@ th{background:#f5f7fa;font-size:18px;}
         if(!uid||!name||!pwd||!dept){alert('请填写完整');return;}
         if(pwd.length<6){alert('密码至少6位');return;}
         
-        await sb.from('users').delete().eq('uid',uid);
-        await sb.from('users').insert([{uid,name,pwd,role:'teacher',dept}]);
+        const { error } = await sb.from('users').upsert([{uid,name,pwd,role:'teacher',dept}], {onConflict: 'uid'});
+        if(error){alert('添加失败：'+error.message);return;}
         document.getElementById('tuid').value=document.getElementById('tname').value=document.getElementById('tpwd').value=document.getElementById('tdept').value='';
         refreshTeacher();
         alert('添加成功');
@@ -381,7 +379,6 @@ th{background:#f5f7fa;font-size:18px;}
                 console.log('读取到 ' + data.length + ' 条数据');
                 
                 let validData = [];
-                let uids = [];
                 
                 for(let row of data){
                     let uid = row['工号'] || row['uid'] || row['UID'] || row['学号'] || row['id'];
@@ -396,11 +393,9 @@ th{background:#f5f7fa;font-size:18px;}
                         dept = String(dept).trim();
                         
                         validData.push({uid, name, pwd, role:'teacher', dept: dept||'未设置'});
-                        uids.push(uid);
                     }
                 }
                 
-                uids = [...new Set(uids)];
                 console.log('有效数据 ' + validData.length + ' 条');
                 
                 if(validData.length === 0){
@@ -408,26 +403,29 @@ th{background:#f5f7fa;font-size:18px;}
                     return;
                 }
                 
-                if(uids.length > 0){
-                    console.log('删除已存在的部长...');
-                    await sb.from('users').delete().in('uid', uids).eq('role', 'teacher');
+                // 使用 upsert 逐条处理
+                let success = 0;
+                let failed = [];
+                
+                for(let item of validData){
+                    try {
+                        const { error } = await sb.from('users').upsert([item], {onConflict: 'uid'});
+                        if(!error){
+                            success++;
+                        } else {
+                            failed.push(item.uid);
+                        }
+                    } catch(err) {
+                        failed.push(item.uid);
+                    }
                 }
                 
-                const { error } = await sb.from('users').insert(validData);
+                console.log('导入完成：成功 ' + success + ' 条，失败 ' + failed.length + ' 条');
                 
-                if(error){
-                    console.warn('批量插入失败，逐条处理:', error);
-                    let success = 0;
-                    for(let item of validData){
-                        try {
-                            await sb.from('users').delete().eq('uid', item.uid);
-                            const { error: e2 } = await sb.from('users').insert([item]);
-                            if(!e2) success++;
-                        } catch(err) {}
-                    }
-                    alert('导入完成！成功 ' + success + '/' + validData.length + ' 条');
+                if(failed.length > 0){
+                    alert('导入完成！成功 ' + success + ' 条\n失败工号：' + failed.slice(0,10).join(', '));
                 } else {
-                    alert('✅ 导入成功！共 ' + validData.length + ' 条');
+                    alert('✅ 导入成功！共 ' + success + ' 条');
                 }
                 
                 refreshTeacher();
