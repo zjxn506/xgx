@@ -111,6 +111,13 @@ button{
     border-radius:6px;
     cursor:pointer;
 }
+.error-msg {
+    color: #f56c6c;
+    font-size: 14px;
+    margin-top: 5px;
+    text-align: center;
+    min-height: 20px;
+}
 </style>
 </head>
 <body>
@@ -125,6 +132,8 @@ button{
 <label><input type="radio" name="role" value="user"> 干事</label>
 <label><input type="radio" name="role" value="teacher"> 部长</label>
 </div>
+
+<div id="loginError" class="error-msg"></div>
 
 <button onclick="login()">登录</button>
 <button class="btn2" onclick="location.href='register.html'">干事注册</button>
@@ -144,83 +153,101 @@ button{
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPABASE_URL = "https://nsyonfiaqniensvcrdao.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9uZmlhcW5pZW5zdmNyZGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjIyNDQsImV4cCI6MjA5MTYzODI0NH0.ZxgkRA8Wp2Zy9ujwkya3apTXHECHvmeilf8qf-3MY78";
+(function() {
+    const SUPABASE_URL = "https://nsyonfiaqniensvcrdao.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9uZmlhcW5pZW5zdmNyZGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjIyNDQsImV4cCI6MjA5MTYzODI0NH0.ZxgkRA8Wp2Zy9ujwkya3apTXHECHvmeilf8qf-3MY78";
 
-const { createClient } = supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false
-  },
-  global: {
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json'
-    }
-  }
-});
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+            storage: window.localStorage
+        },
+        global: {
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json'
+            }
+        }
+    });
 
-async function login(){
-    const uid = document.getElementById('uid').value.trim();
-    const pwd = document.getElementById('pwd').value.trim();
-    const role = document.querySelector('input[name="role"]:checked').value;
+    window.login = async function() {
+        const uid = document.getElementById('uid').value.trim();
+        const pwd = document.getElementById('pwd').value.trim();
+        const role = document.querySelector('input[name="role"]:checked').value;
+        const errorDiv = document.getElementById('loginError');
 
-    if(!uid || !pwd){
-        alert('请输入账号密码');
-        return;
-    }
+        errorDiv.textContent = '';
 
-    try {
-        // 先用 uid 和 role 查询用户是否存在（使用 maybeSingle 避免 406）
-        const { data: user, error } = await sb
-            .from('users')
-            .select('uid, name, role, pwd, dept')
-            .eq('uid', uid)
-            .eq('role', role)
-            .maybeSingle();
-
-        if(error) {
-            console.error('查询错误:', error);
-            alert('登录失败：系统错误');
+        if(!uid || !pwd){
+            errorDiv.textContent = '请输入账号和密码';
             return;
         }
 
-        if(!user){
-            alert('登录失败：账号或角色不匹配');
-            return;
+        try {
+            const { data: user, error } = await sb
+                .from('users')
+                .select('*')
+                .eq('uid', uid)
+                .maybeSingle();
+
+            if(error) {
+                console.error('查询错误:', error);
+                errorDiv.textContent = '系统错误，请稍后重试';
+                return;
+            }
+
+            if(!user) {
+                errorDiv.textContent = '账号不存在';
+                return;
+            }
+
+            if(user.pwd !== pwd) {
+                errorDiv.textContent = '密码错误';
+                return;
+            }
+
+            if(user.role !== role) {
+                const roleNames = {admin:'管理员', teacher:'部长', user:'干事'};
+                errorDiv.textContent = `角色不匹配，您是${roleNames[user.role]}`;
+                return;
+            }
+
+            const safeUser = {
+                uid: user.uid,
+                name: user.name,
+                role: user.role,
+                dept: user.dept
+            };
+            sessionStorage.setItem("user", JSON.stringify(safeUser));
+            
+            if(user.role === 'admin') {
+                location.href = 'admin.html';
+            } else if(user.role === 'user') {
+                location.href = 'home.html';
+            } else if(user.role === 'teacher') {
+                location.href = 'teacher.html';
+            }
+        } catch(err) {
+            console.error('登录异常:', err);
+            errorDiv.textContent = '网络错误，请稍后重试';
         }
+    };
 
-        // 验证密码
-        if(user.pwd !== pwd){
-            alert('登录失败：密码错误');
-            return;
-        }
+    window.showResetTip = function() {
+        document.getElementById('resetTipModal').style.display = 'flex';
+    };
+    
+    window.closeResetTip = function() {
+        document.getElementById('resetTipModal').style.display = 'none';
+    };
 
-        // 登录成功，移除密码字段后再存入 sessionStorage
-        const { pwd: _, ...safeUser } = user;
-        sessionStorage.setItem("user", JSON.stringify(safeUser));
-        
-        if(user.role === 'admin') location.href = 'admin.html';
-        else if(user.role === 'user') location.href = 'home.html';
-        else if(user.role === 'teacher') location.href = 'teacher.html';
-    } catch(err) {
-        console.error('登录异常:', err);
-        alert('登录失败：网络错误');
-    }
-}
-
-function showResetTip(){
-    document.getElementById('resetTipModal').style.display='flex';
-}
-function closeResetTip(){
-    document.getElementById('resetTipModal').style.display='none';
-}
-
-document.getElementById('pwd').addEventListener('keydown', function(e) {
-    if(e.key === 'Enter') login();
-});
+    document.getElementById('pwd').addEventListener('keydown', function(e) {
+        if(e.key === 'Enter') window.login();
+    });
+})();
 </script>
 </body>
 </html>
