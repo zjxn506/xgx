@@ -72,127 +72,133 @@ input{width:100%;padding:10px;margin:5px 0;border:1px solid #ddd;border-radius:4
 </div>
 
 <script>
-const SUPABASE_URL = "https://nsyonfiaqniensvcrdao.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9uZmlhcW5pZW5zdmNyZGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjIyNDQsImV4cCI6MjA5MTYzODI0NH0.ZxgkRA8Wp2Zy9ujwkya3apTXHECHvmeilf8qf-3MY78";
+(function() {
+    const SUPABASE_URL = "https://nsyonfiaqniensvcrdao.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9uZmlhcW5pZW5zdmNyZGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjIyNDQsImV4cCI6MjA5MTYzODI0NH0.ZxgkRA8Wp2Zy9ujwkya3apTXHECHvmeilf8qf-3MY78";
 
-const { createClient } = supabase;
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false
-  },
-  global: {
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json'
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const u = JSON.parse(sessionStorage.getItem('user'));
+    if(!u || u.role !== 'user'){alert('请登录');location.href='login.html';}
+
+    const now = new Date();
+    const today = (now.getMonth()+1)+"-"+now.getDate();
+    document.getElementById('studentName').innerText = u.name;
+    document.getElementById('welcomeText').innerText = `欢迎您，${u.name}！`;
+
+    window.$ = function(id){return document.getElementById(id);};
+
+    window.showPage = function(id){
+        document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+        document.querySelectorAll('.menu-item').forEach(m=>m.classList.remove('active'));
+        document.getElementById('page-'+id).classList.add('active');
+        document.querySelector(`[onclick="showPage('${id}')"]`).classList.add('active');
+        if(id==='course') loadCourses();
+        if(id==='my') loadMyCourses();
+    };
+
+    window.logout = function(){
+        sessionStorage.removeItem('user');
+        location.href='login.html';
+    };
+
+    window.deleteAccount = async function() {
+        if(!confirm("确定注销？"))return;
+        await sb.from('users').delete().eq('uid',u.uid);
+        await sb.from('selects').delete().eq('uid',u.uid);
+        sessionStorage.removeItem('user');
+        alert("注销成功");
+        location.href='login.html';
+    };
+
+    async function loadCourses(){
+        const {data:courses} = await sb.from('courses').select('*');
+        const {data:selects} = await sb.from('selects').select('*').eq('uid',u.uid);
+        const allSelects = await sb.from('selects').select('*');
+        const myIds = (selects||[]).map(s=>s.cid);
+        let html='';
+        if(courses){
+            courses.forEach(c=>{
+                const canView = !c.viewDate || today >= c.viewDate;
+                if(!canView) return;
+                const canSelect = !c.selectDate || today >= c.selectDate;
+                let cnt = (allSelects.data||[]).filter(s=>s.cid===c.id).length;
+                let max = c.max||1;
+                let full = cnt>=max;
+                let btn='';
+                if(myIds.includes(c.id)) btn='<button disabled>已选</button>';
+                else if(full) btn='<button disabled>已满</button>';
+                else if(!canSelect) btn='<span class="time-tip">禁止选课</span>';
+                else btn=`<button onclick="selectCourse('${c.id}')">选课</button>`;
+                html+=`<tr><td>${c.name}</td><td>${c.time}</td><td>${c.loc}</td><td>${c.teacher}</td><td>${max}</td><td>${btn}</td></tr>`;
+            });
+        }
+        document.getElementById('courseList').innerHTML=html||'<tr><td colspan="6">暂无课程</td></tr>';
     }
-  }
-});
 
-const u = JSON.parse(sessionStorage.getItem('user'));
-if(!u || u.role !== 'user'){alert('请登录');location.href='login.html';}
+    window.loadCourses = loadCourses;
 
-const now = new Date();
-const today = (now.getMonth()+1)+"-"+now.getDate();
-document.getElementById('studentName').innerText = u.name;
-document.getElementById('welcomeText').innerText = `欢迎您，${u.name}！`;
+    window.selectCourse = async function(cid){
+        const {data:course} = await sb.from('courses').select('*').eq('id',cid).maybeSingle();
+        if(!course) return;
+        if(course.selectDate && today < course.selectDate){alert("未到时间");return;}
+        const {data:selects} = await sb.from('selects').select('*').eq('cid',cid);
+        if((selects||[]).length >= (course.max||1)){alert("已满");return;}
+        await sb.from('selects').insert([{uid:u.uid,name:u.name,cid:cid}]);
+        loadCourses();
+        alert("选课成功");
+    };
 
-function $(id){return document.getElementById(id)}
-function showPage(id){
-    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-    document.querySelectorAll('.menu-item').forEach(m=>m.classList.remove('active'));
-    $('page-'+id).classList.add('active');
-    document.querySelector(`[onclick="showPage('${id}')"]`).classList.add('active');
-    if(id==='course')loadCourses();
-    if(id==='my')loadMyCourses();
-}
-function logout(){sessionStorage.removeItem('user');location.href='login.html';}
-
-async function deleteAccount() {
-    if(!confirm("确定注销？"))return;
-    await supabase.from('users').delete().eq('uid',u.uid);
-    await supabase.from('selects').delete().eq('uid',u.uid);
-    sessionStorage.removeItem('user');
-    alert("注销成功");
-    location.href='login.html';
-}
-
-async function loadCourses(){
-    const {data:courses} = await supabase.from('courses').select('*');
-    const {data:selects} = await supabase.from('selects').select('*').eq('uid',u.uid);
-    const myIds = selects.map(s=>s.cid);
-    let html='';
-    courses.forEach(c=>{
-        const canView = !c.viewDate || today >= c.viewDate;
-        if(!canView)return;
-        const canSelect = !c.selectDate || today >= c.selectDate;
-        let cnt = selects.filter(s=>s.cid===c.id).length;
-        let max = c.max||1;
-        let full = cnt>=max;
-        let btn='';
-        if(myIds.includes(c.id))btn='<button disabled>已选</button>';
-        else if(full)btn='<button disabled>已满</button>';
-        else if(!canSelect)btn='<span class="time-tip">禁止选课</span>';
-        else btn=`<button onclick="selectCourse('${c.id}')">选课</button>`;
-        html+=`<tr><td>${c.name}</td><td>${c.time}</td><td>${c.loc}</td><td>${c.teacher}</td><td>${max}</td><td>${btn}</td></tr>`;
-    });
-    $('courseList').innerHTML=html||'<tr><td colspan="6">暂无课程</td></tr>';
-}
-
-async function selectCourse(cid){
-    const {data:course} = await supabase.from('courses').select('*').eq('id',cid).maybeSingle();
-    if(!course)return;
-    if(course.selectDate && today < course.selectDate){alert("未到时间");return;}
-    const {data:selects} = await supabase.from('selects').select('*').eq('cid',cid);
-    if(selects.length>=(course.max||1)){alert("已满");return;}
-    await supabase.from('selects').insert([{uid:u.uid,name:u.name,cid:cid}]);
-    loadCourses();
-    alert("选课成功");
-}
-
-async function loadMyCourses(){
-    const {data:selects} = await supabase.from('selects').select('*').eq('uid',u.uid);
-    const {data:courses} = await supabase.from('courses').select('*');
-    let html='';
-    selects.forEach(s=>{
-        let c=courses.find(x=>x.id===s.cid);
-        if(c)html+=`<tr><td>${c.name}</td><td>${c.time}</td><td>${c.loc}</td><td>${c.teacher}</td><td><button style="background:red" onclick="quitCourse('${c.id}')">退课</button></td></tr>`;
-    });
-    $('myList').innerHTML=html||'<tr><td colspan="5">未选课</td></tr>';
-}
-
-async function quitCourse(cid){
-    if(!confirm('确定退课？'))return;
-    await supabase.from('selects').delete().eq('uid',u.uid).eq('cid',cid);
-    loadMyCourses();
-    alert('退课成功');
-}
-
-async function updateAccount(){
-    let nu=$('newUid').value.trim(),np=$('newPwd').value.trim();
-    if(!nu&&!np){alert('至少改一项');return;}
-    if(np && np.length<6){alert('密码至少6位');return;}
-    
-    const updateData = {};
-    if(nu) updateData.uid = nu;
-    if(np) updateData.pwd = np;
-    
-    const { error } = await supabase.from('users').update(updateData).eq('uid',u.uid);
-    if(error){alert('修改失败：'+error.message);return;}
-    
-    if(nu){
-        await supabase.from('selects').update({uid:nu}).eq('uid',u.uid);
+    async function loadMyCourses(){
+        const {data:selects} = await sb.from('selects').select('*').eq('uid',u.uid);
+        const {data:courses} = await sb.from('courses').select('*');
+        let html='';
+        if(selects && courses){
+            selects.forEach(s=>{
+                let c = courses.find(x=>x.id===s.cid);
+                if(c) html+=`<tr><td>${c.name}</td><td>${c.time}</td><td>${c.loc}</td><td>${c.teacher}</td><td><button style="background:red" onclick="quitCourse('${c.id}')">退课</button></td></tr>`;
+            });
+        }
+        document.getElementById('myList').innerHTML=html||'<tr><td colspan="5">未选课</td></tr>';
     }
-    
-    const updatedUser = {...u};
-    if(nu) updatedUser.uid = nu;
-    sessionStorage.setItem('user',JSON.stringify(updatedUser));
-    
-    alert('修改成功');
-    $('newUid').value='';$('newPwd').value='';
-}
-showPage('home');
+
+    window.loadMyCourses = loadMyCourses;
+
+    window.quitCourse = async function(cid){
+        if(!confirm('确定退课？'))return;
+        await sb.from('selects').delete().eq('uid',u.uid).eq('cid',cid);
+        loadMyCourses();
+        alert('退课成功');
+    };
+
+    window.updateAccount = async function(){
+        let nu = document.getElementById('newUid').value.trim();
+        let np = document.getElementById('newPwd').value.trim();
+        if(!nu && !np){alert('至少改一项');return;}
+        if(np && np.length<6){alert('密码至少6位');return;}
+        
+        const updateData = {};
+        if(nu) updateData.uid = nu;
+        if(np) updateData.pwd = np;
+        
+        const { error } = await sb.from('users').update(updateData).eq('uid',u.uid);
+        if(error){alert('修改失败：'+error.message);return;}
+        
+        if(nu){
+            await sb.from('selects').update({uid:nu}).eq('uid',u.uid);
+        }
+        
+        const updatedUser = {...u};
+        if(nu) updatedUser.uid = nu;
+        sessionStorage.setItem('user',JSON.stringify(updatedUser));
+        
+        alert('修改成功');
+        document.getElementById('newUid').value='';
+        document.getElementById('newPwd').value='';
+    };
+
+    showPage('home');
+})();
 </script>
 </body>
 </html>

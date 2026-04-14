@@ -63,8 +63,6 @@ body {
 </head>
 <body>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <div class="register-box">
 <h1>干事注册</h1>
 <div class="input-item"><input type="text" id="uid" placeholder="学号（数字）"></div>
@@ -75,61 +73,37 @@ body {
 <button class="btn btn-back" onclick="goBack()">返回登录</button>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPABASE_URL = "https://nsyonfiaqniensvcrdao.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9uZmlhcW5pZW5zdmNyZGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjIyNDQsImV4cCI6MjA5MTYzODI0NH0.ZxgkRA8Wp2Zy9ujwkya3apTXHECHvmeilf8qf-3MY78";
+(function() {
+    const SUPABASE_URL = "https://nsyonfiaqniensvcrdao.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9uZmlhcW5pZW5zdmNyZGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjIyNDQsImV4cCI6MjA5MTYzODI0NH0.ZxgkRA8Wp2Zy9ujwkya3apTXHECHvmeilf8qf-3MY78";
 
-const { createClient } = supabase;
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false
-  },
-  global: {
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json'
-    }
-  }
-});
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-async function register() {
-    const uid = document.getElementById('uid').value.trim();
-    const name = document.getElementById('name').value.trim();
-    const pwd = document.getElementById('pwd').value.trim();
-    const dept = document.getElementById('dept').value.trim();
-    
-    if(!uid||!name||!pwd||!dept){alert('请填写完整');return;}
-    if(pwd.length<6){alert('密码至少6位');return;}
-    if(!/^\d+$/.test(uid)){alert('学号必须数字');return;}
+    window.register = async function() {
+        const uid = document.getElementById('uid').value.trim();
+        const name = document.getElementById('name').value.trim();
+        const pwd = document.getElementById('pwd').value.trim();
+        const dept = document.getElementById('dept').value.trim();
+        
+        if(!uid||!name||!pwd||!dept){alert('请填写完整');return;}
+        if(pwd.length<6){alert('密码至少6位');return;}
+        if(!/^\d+$/.test(uid)){alert('学号必须数字');return;}
 
-    // 检查学号是否已存在
-    const { data: existing } = await supabase
-        .from('users')
-        .select('uid')
-        .eq('uid', uid)
-        .maybeSingle();
-    
-    if(existing) {
-        alert('该学号已被注册');
-        return;
-    }
+        const { data: existing } = await sb.from('users').select('uid').eq('uid', uid).maybeSingle();
+        if(existing) { alert('该学号已被注册'); return; }
 
-    const { error } = await supabase.from('users').insert([{
-        uid, name, pwd, role:'user', dept
-    }]);
-    
-    if(error){
-        console.error('注册错误:', error);
-        alert('注册失败：' + error.message);
-        return;
-    }
-    alert('注册成功！');
-    goBack();
-}
+        const { error } = await sb.from('users').insert([{ uid, name, pwd, role:'user', dept }]);
+        if(error){ alert('注册失败：'+error.message); return; }
+        alert('注册成功！');
+        window.location.href = 'login.html';
+    };
 
-function goBack(){location.href='login.html';}
+    window.goBack = function() {
+        window.location.href = 'login.html';
+    };
+})();
 </script>
 </body>
 </html>
