@@ -148,44 +148,19 @@ th{background:#f5f7fa;font-size:18px;}
 
     async function checkSession() {
         if(!user) return;
-        
         try {
-            const { data, error } = await sb
-                .from('users')
-                .select('session_token')
-                .eq('uid', user.uid)
-                .maybeSingle();
-            
+            const { data, error } = await sb.from('users').select('session_token').eq('uid', user.uid).maybeSingle();
             if(error) return;
-            
-            // 如果数据库中的 token 与当前不一致，说明被踢下线
             if(data && data.session_token && data.session_token !== user.session_token) {
                 clearInterval(checkInterval);
                 sessionStorage.removeItem('user');
-                
-                // 显示被踢提示
                 const kickModal = document.createElement('div');
                 kickModal.style.cssText = 'display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;z-index:10000;';
-                kickModal.innerHTML = `
-                    <div style="width:350px;padding:30px;border-radius:12px;background:#fff;text-align:center;">
-                        <h3 style="color:#f56c6c;margin-bottom:15px;">⚠️ 登录失效</h3>
-                        <p style="margin-bottom:20px;color:#666;">您的账号已在其他地方登录</p>
-                        <button onclick="location.href='login.html'" style="width:120px;padding:10px;background:#409eff;color:#fff;border:none;border-radius:6px;cursor:pointer;">重新登录</button>
-                    </div>
-                `;
+                kickModal.innerHTML = `<div style="width:350px;padding:30px;border-radius:12px;background:#fff;text-align:center;"><h3 style="color:#f56c6c;margin-bottom:15px;">⚠️ 登录失效</h3><p style="margin-bottom:20px;color:#666;">您的账号已在其他地方登录</p><button onclick="location.href='login.html'" style="width:120px;padding:10px;background:#409eff;color:#fff;border:none;border-radius:6px;cursor:pointer;">重新登录</button></div>`;
                 document.body.appendChild(kickModal);
-            } else {
-                // 更新最后活动时间（可选）
-                await sb.from('users')
-                    .update({ last_active: new Date().toISOString() })
-                    .eq('uid', user.uid);
             }
-        } catch(err) {
-            console.error('Session check error:', err);
-        }
+        } catch(err) {}
     }
-
-    // 启动定时检查（每5秒检查一次）
     checkInterval = setInterval(checkSession, 5000);
 
     window.$ = function(id){return document.getElementById(id);};
@@ -205,12 +180,7 @@ th{background:#f5f7fa;font-size:18px;}
     window.logout = async function(){
         if(confirm('确定退出？')){
             clearInterval(checkInterval);
-            // 清除数据库中的 token
-            if(user){
-                await sb.from('users')
-                    .update({ session_token: null })
-                    .eq('uid', user.uid);
-            }
+            if(user){ await sb.from('users').update({ session_token: null }).eq('uid', user.uid); }
             sessionStorage.removeItem('user');
             location.href='login.html';
         }
@@ -251,7 +221,6 @@ th{background:#f5f7fa;font-size:18px;}
         let dept = document.getElementById('sdept').value.trim();
         if(!uid||!name||!pwd||!dept){alert('请填写完整');return;}
         if(pwd.length<6){alert('密码至少6位');return;}
-        
         const { error } = await sb.from('users').upsert([{uid,name,pwd,role:'user',dept}], {onConflict: 'uid'});
         if(error){alert('添加失败：'+error.message);return;}
         document.getElementById('suid').value=document.getElementById('sname').value=document.getElementById('spwd').value=document.getElementById('sdept').value='';
@@ -278,71 +247,32 @@ th{background:#f5f7fa;font-size:18px;}
     window.importStudentExcel = async function(){
         let f = document.getElementById('studentExcel').files[0];
         if(!f){alert('请选择文件');return;}
-        
         let r = new FileReader();
         r.onload = async e => {
             try {
                 let wb = XLSX.read(e.target.result, {type:'binary'});
                 let sheet = wb.Sheets[wb.SheetNames[0]];
                 let data = XLSX.utils.sheet_to_json(sheet);
-                
-                console.log('读取到 ' + data.length + ' 条数据');
-                
                 let validData = [];
-                
                 for(let row of data){
                     let uid = row['学号'] || row['uid'] || row['UID'] || row['工号'] || row['id'];
                     let name = row['姓名'] || row['name'] || row['Name'];
                     let pwd = row['密码'] || row['pwd'] || row['PWD'];
                     let dept = row['所属部门'] || row['dept'] || row['部门'] || '';
-                    
                     if(uid && name && pwd){
-                        uid = String(uid).trim();
-                        name = String(name).trim();
-                        pwd = String(pwd).trim();
-                        dept = String(dept).trim();
-                        
-                        validData.push({uid, name, pwd, role:'user', dept: dept||'未设置'});
+                        validData.push({uid: String(uid).trim(), name: String(name).trim(), pwd: String(pwd).trim(), role:'user', dept: String(dept).trim()||'未设置'});
                     }
                 }
-                
-                console.log('有效数据 ' + validData.length + ' 条');
-                
-                if(validData.length === 0){
-                    alert('没有有效数据');
-                    return;
-                }
-                
+                if(validData.length === 0){alert('没有有效数据');return;}
                 let success = 0;
-                let failed = [];
-                
                 for(let item of validData){
-                    try {
-                        const { error } = await sb.from('users').upsert([item], {onConflict: 'uid'});
-                        if(!error){
-                            success++;
-                        } else {
-                            failed.push(item.uid);
-                        }
-                    } catch(err) {
-                        failed.push(item.uid);
-                    }
+                    const { error } = await sb.from('users').upsert([item], {onConflict: 'uid'});
+                    if(!error) success++;
                 }
-                
-                console.log('导入完成：成功 ' + success + ' 条，失败 ' + failed.length + ' 条');
-                
-                if(failed.length > 0){
-                    alert('导入完成！成功 ' + success + ' 条\n失败学号：' + failed.slice(0,10).join(', ') + (failed.length>10?'...':''));
-                } else {
-                    alert('✅ 导入成功！共 ' + success + ' 条');
-                }
-                
                 setTimeout(() => refreshStudent(), 500);
+                alert('✅ 导入成功！共 ' + success + ' 条');
                 document.getElementById('studentExcel').value='';
-            } catch(err) {
-                console.error('导入错误:', err);
-                alert('导入失败：' + err.message);
-            }
+            } catch(err) { alert('导入失败：' + err.message); }
         };
         r.readAsBinaryString(f);
     };
@@ -392,7 +322,6 @@ th{background:#f5f7fa;font-size:18px;}
         let dept = document.getElementById('tdept').value.trim();
         if(!uid||!name||!pwd||!dept){alert('请填写完整');return;}
         if(pwd.length<6){alert('密码至少6位');return;}
-        
         const { error } = await sb.from('users').upsert([{uid,name,pwd,role:'teacher',dept}], {onConflict: 'uid'});
         if(error){alert('添加失败：'+error.message);return;}
         document.getElementById('tuid').value=document.getElementById('tname').value=document.getElementById('tpwd').value=document.getElementById('tdept').value='';
@@ -419,71 +348,32 @@ th{background:#f5f7fa;font-size:18px;}
     window.importTeacherExcel = async function(){
         let f = document.getElementById('teacherExcel').files[0];
         if(!f){alert('请选择文件');return;}
-        
         let r = new FileReader();
         r.onload = async e => {
             try {
                 let wb = XLSX.read(e.target.result, {type:'binary'});
                 let sheet = wb.Sheets[wb.SheetNames[0]];
                 let data = XLSX.utils.sheet_to_json(sheet);
-                
-                console.log('读取到 ' + data.length + ' 条数据');
-                
                 let validData = [];
-                
                 for(let row of data){
                     let uid = row['工号'] || row['uid'] || row['UID'] || row['学号'] || row['id'];
                     let name = row['姓名'] || row['name'] || row['Name'];
                     let pwd = row['密码'] || row['pwd'] || row['PWD'];
                     let dept = row['负责部门'] || row['dept'] || row['部门'] || '';
-                    
                     if(uid && name && pwd){
-                        uid = String(uid).trim();
-                        name = String(name).trim();
-                        pwd = String(pwd).trim();
-                        dept = String(dept).trim();
-                        
-                        validData.push({uid, name, pwd, role:'teacher', dept: dept||'未设置'});
+                        validData.push({uid: String(uid).trim(), name: String(name).trim(), pwd: String(pwd).trim(), role:'teacher', dept: String(dept).trim()||'未设置'});
                     }
                 }
-                
-                console.log('有效数据 ' + validData.length + ' 条');
-                
-                if(validData.length === 0){
-                    alert('没有有效数据');
-                    return;
-                }
-                
+                if(validData.length === 0){alert('没有有效数据');return;}
                 let success = 0;
-                let failed = [];
-                
                 for(let item of validData){
-                    try {
-                        const { error } = await sb.from('users').upsert([item], {onConflict: 'uid'});
-                        if(!error){
-                            success++;
-                        } else {
-                            failed.push(item.uid);
-                        }
-                    } catch(err) {
-                        failed.push(item.uid);
-                    }
+                    const { error } = await sb.from('users').upsert([item], {onConflict: 'uid'});
+                    if(!error) success++;
                 }
-                
-                console.log('导入完成：成功 ' + success + ' 条，失败 ' + failed.length + ' 条');
-                
-                if(failed.length > 0){
-                    alert('导入完成！成功 ' + success + ' 条\n失败工号：' + failed.slice(0,10).join(', '));
-                } else {
-                    alert('✅ 导入成功！共 ' + success + ' 条');
-                }
-                
                 setTimeout(() => refreshTeacher(), 500);
+                alert('✅ 导入成功！共 ' + success + ' 条');
                 document.getElementById('teacherExcel').value='';
-            } catch(err) {
-                console.error('导入错误:', err);
-                alert('导入失败：' + err.message);
-            }
+            } catch(err) { alert('导入失败：' + err.message); }
         };
         r.readAsBinaryString(f);
     };
@@ -494,7 +384,7 @@ th{background:#f5f7fa;font-size:18px;}
         let html='';
         if(data){
             data.forEach(c=>{
-                html+=`<tr><td>${c.name}</td><td>${c.time}</td><td>${c.loc}</td><td>${c.teacher}</td><td>${c.viewDate||'无限制'}</td><td>${c.selectDate||'无限制'}</td><td><button onclick="editCourse('${c.id}')">修改</button> <button class="btn-red" onclick="delCourse('${c.id}')">删除</button></td></tr>`;
+                html+=`<tr><td>${c.name||''}</td><td>${c.time||'待定'}</td><td>${c.loc||'待定'}</td><td>${c.teacher||'待定'}</td><td>${c.viewDate||'无限制'}</td><td>${c.selectDate||'无限制'}</td><td><button onclick="editCourse('${c.id}')">修改</button> <button class="btn-red" onclick="delCourse('${c.id}')">删除</button></td></tr>`;
             });
         }
         document.getElementById('courseList').innerHTML=html||'<tr><td colspan="7">暂无课程</td></tr>';
@@ -508,9 +398,13 @@ th{background:#f5f7fa;font-size:18px;}
         let teacher = document.getElementById('cteacher').value.trim();
         let viewDate = document.getElementById('cview').value.trim();
         let selectDate = document.getElementById('cselect').value.trim();
-        if(!name||!time||!loc||!teacher){alert('请填写完整');return;}
-        let id = "course_"+Date.now();
-        await sb.from('courses').insert([{id,name,time,loc,teacher,viewDate,selectDate}]);
+        if(!name||!time||!loc||!teacher){alert('请填写完整（班级、时间、地点、辅导员）');return;}
+        let id = "course_" + Date.now();
+        const insertData = {id, name, time, loc, teacher};
+        if(viewDate) insertData.viewDate = viewDate;
+        if(selectDate) insertData.selectDate = selectDate;
+        const { error } = await sb.from('courses').insert([insertData]);
+        if(error){alert('添加失败：'+error.message);return;}
         document.getElementById('cname').value=document.getElementById('ctime').value=document.getElementById('cloc').value=document.getElementById('cteacher').value=document.getElementById('cview').value=document.getElementById('cselect').value='';
         refreshCourse();
         alert('添加成功');
@@ -519,10 +413,10 @@ th{background:#f5f7fa;font-size:18px;}
     window.editCourse = async function(id){
         const {data} = await sb.from('courses').select('*').eq('id',id).maybeSingle();
         if(data){
-            document.getElementById('cname').value=data.name;
-            document.getElementById('ctime').value=data.time;
-            document.getElementById('cloc').value=data.loc;
-            document.getElementById('cteacher').value=data.teacher;
+            document.getElementById('cname').value=data.name||'';
+            document.getElementById('ctime').value=data.time||'';
+            document.getElementById('cloc').value=data.loc||'';
+            document.getElementById('cteacher').value=data.teacher||'';
             document.getElementById('cview').value=data.viewDate||'';
             document.getElementById('cselect').value=data.selectDate||'';
         }
@@ -546,32 +440,34 @@ th{background:#f5f7fa;font-size:18px;}
         let r = new FileReader();
         r.onload = async e => {
             try {
-                let wb = XLSX.read(e.target.result,{type:'binary'});
+                let wb = XLSX.read(e.target.result, {type:'binary'});
                 let sheet = wb.Sheets[wb.SheetNames[0]];
                 let data = XLSX.utils.sheet_to_json(sheet);
-                console.log('读取到 ' + data.length + ' 条课程');
-                
+                let success = 0, failed = [];
                 for(let row of data){
-                    let name = row['班级名称'] || row['name'] || row['班级'] || '';
-                    if(name){
-                        let id = "c"+Date.now()+Math.random().toString(36).substr(2,5);
-                        await sb.from('courses').insert([{
-                            id, 
-                            name: name,
-                            time: row['时间'] || row['time'] || '',
-                            loc: row['地点'] || row['loc'] || '',
-                            teacher: row['辅导员'] || row['teacher'] || '',
-                            viewDate: row['可查看时间'] || row['viewDate'] || '',
-                            selectDate: row['可选择时间'] || row['selectDate'] || ''
-                        }]);
-                    }
+                    try {
+                        let name = row['班级名称'] || row['name'] || row['班级'] || row['课程名称'] || '';
+                        if(!name || String(name).trim() === '') continue;
+                        name = String(name).trim();
+                        let time = String(row['时间'] || row['time'] || '').trim() || '待定';
+                        let loc = String(row['地点'] || row['loc'] || row['location'] || '').trim() || '待定';
+                        let teacher = String(row['辅导员'] || row['teacher'] || '').trim() || '待定';
+                        let viewDate = String(row['可查看时间'] || row['viewDate'] || '').trim() || null;
+                        let selectDate = String(row['可选择时间'] || row['selectDate'] || '').trim() || null;
+                        let id = 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+                        const insertData = {id, name, time, loc, teacher};
+                        if(viewDate) insertData.viewDate = viewDate;
+                        if(selectDate) insertData.selectDate = selectDate;
+                        const { error } = await sb.from('courses').insert([insertData]);
+                        if(error){ failed.push(name); } else { success++; }
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                    } catch(err) {}
                 }
-                refreshCourse();
-                alert('导入成功');
+                if(failed.length > 0){ alert('导入完成！成功 ' + success + ' 条\n失败：' + failed.slice(0,5).join(', ')); }
+                else { alert('✅ 导入成功！共 ' + success + ' 条课程'); }
+                setTimeout(() => refreshCourse(), 500);
                 document.getElementById('courseExcel').value='';
-            } catch(err) {
-                alert('导入失败：'+err.message);
-            }
+            } catch(err) { alert('导入失败：' + err.message); }
         };
         r.readAsBinaryString(f);
     };
