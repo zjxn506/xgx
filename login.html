@@ -147,7 +147,6 @@ button{
 const SUPABASE_URL = "https://nsyonfiaqniensvcrdao.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9uZmlhcW5pZW5zdmNyZGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjIyNDQsImV4cCI6MjA5MTYzODI0NH0.ZxgkRA8Wp2Zy9ujwkya3apTXHECHvmeilf8qf-3MY78";
 
-// ✅ 已修复 406 错误
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
@@ -173,24 +172,43 @@ async function login(){
         return;
     }
 
-    const { data: user, error } = await sb
-        .from('users')
-        .select('*')
-        .eq('uid', uid)
-        .eq('pwd', pwd)
-        .eq('role', role)
-        .single();
+    try {
+        // 先用 uid 和 role 查询用户是否存在（使用 maybeSingle 避免 406）
+        const { data: user, error } = await sb
+            .from('users')
+            .select('uid, name, role, pwd, dept')
+            .eq('uid', uid)
+            .eq('role', role)
+            .maybeSingle();
 
-    if(error || !user){
-        alert('登录失败：账号/密码/角色不匹配');
-        return;
+        if(error) {
+            console.error('查询错误:', error);
+            alert('登录失败：系统错误');
+            return;
+        }
+
+        if(!user){
+            alert('登录失败：账号或角色不匹配');
+            return;
+        }
+
+        // 验证密码
+        if(user.pwd !== pwd){
+            alert('登录失败：密码错误');
+            return;
+        }
+
+        // 登录成功，移除密码字段后再存入 sessionStorage
+        const { pwd: _, ...safeUser } = user;
+        sessionStorage.setItem("user", JSON.stringify(safeUser));
+        
+        if(user.role === 'admin') location.href = 'admin.html';
+        else if(user.role === 'user') location.href = 'home.html';
+        else if(user.role === 'teacher') location.href = 'teacher.html';
+    } catch(err) {
+        console.error('登录异常:', err);
+        alert('登录失败：网络错误');
     }
-
-    sessionStorage.setItem("user", JSON.stringify(user));
-    
-    if(user.role === 'admin') location.href = 'admin.html';
-    else if(user.role === 'user') location.href = 'home.html';
-    else if(user.role === 'teacher') location.href = 'teacher.html';
 }
 
 function showResetTip(){

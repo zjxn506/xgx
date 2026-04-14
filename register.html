@@ -79,7 +79,6 @@ body {
 const SUPABASE_URL = "https://nsyonfiaqniensvcrdao.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9uZmlhcW5pZW5zdmNyZGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjIyNDQsImV4cCI6MjA5MTYzODI0NH0.ZxgkRA8Wp2Zy9ujwkya3apTXHECHvmeilf8qf-3MY78";
 
-// ✅ 已修复 406 错误
 const { createClient } = supabase;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
@@ -105,11 +104,27 @@ async function register() {
     if(pwd.length<6){alert('密码至少6位');return;}
     if(!/^\d+$/.test(uid)){alert('学号必须数字');return;}
 
-    const {error} = await supabase.from('users').insert([{
+    // 检查学号是否已存在
+    const { data: existing } = await supabase
+        .from('users')
+        .select('uid')
+        .eq('uid', uid)
+        .maybeSingle();
+    
+    if(existing) {
+        alert('该学号已被注册');
+        return;
+    }
+
+    const { error } = await supabase.from('users').insert([{
         uid, name, pwd, role:'user', dept
     }]);
     
-    if(error){alert('注册失败：'+error.message);return;}
+    if(error){
+        console.error('注册错误:', error);
+        alert('注册失败：' + error.message);
+        return;
+    }
     alert('注册成功！');
     goBack();
 }

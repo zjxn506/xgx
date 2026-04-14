@@ -135,7 +135,6 @@ th{background:#f5f7fa;font-size:18px;}
 const SUPABASE_URL = "https://nsyonfiaqniensvcrdao.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9uZmlhcW5pZW5zdmNyZGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjIyNDQsImV4cCI6MjA5MTYzODI0NH0.ZxgkRA8Wp2Zy9ujwkya3apTXHECHvmeilf8qf-3MY78";
 
-// ✅ 已修复 406 错误
 const { createClient } = supabase;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
@@ -153,6 +152,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
 
 const user = JSON.parse(sessionStorage.getItem('user'));
 if(!user || user.role !== 'admin'){alert('请登录');location.href='login.html';}
+$('adminName').innerText = user.name || '管理员';
 
 function $(id){return document.getElementById(id)}
 function showPage(pageId){
@@ -180,9 +180,22 @@ async function refreshSelect(){
     });
     $('selectList').innerHTML=html||'<tr><td colspan="6">无</td></tr>';
 }
+
 function exportSelectExcel(){
-    refreshSelect();
-    alert('导出功能保留本地逻辑，云端数据已加载');
+    const rows = [];
+    const table = $('selectList').closest('table');
+    const headers = [];
+    table.querySelectorAll('thead th, tr:first-child th').forEach(th => headers.push(th.innerText));
+    rows.push(headers);
+    table.querySelectorAll('tbody tr').forEach(tr => {
+        const row = [];
+        tr.querySelectorAll('td').forEach(td => row.push(td.innerText));
+        if(row.length > 0) rows.push(row);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '选课表');
+    XLSX.writeFile(wb, '选课表.xlsx');
 }
 
 async function refreshUnselect(){
@@ -195,7 +208,20 @@ async function refreshUnselect(){
     unselect.forEach(s=>{html+=`<tr><td>${s.uid}</td><td>${s.name}</td><td>${s.dept||'无'}</td></tr>`;});
     $('unselectList').innerHTML=html||'<tr><td colspan="3">全部已选课</td></tr>';
 }
-function exportUnselectExcel(){refreshUnselect();alert('导出功能保留本地逻辑');}
+
+function exportUnselectExcel(){
+    const rows = [['学号','姓名','部门']];
+    const table = $('unselectList').closest('table');
+    table.querySelectorAll('tbody tr').forEach(tr => {
+        const row = [];
+        tr.querySelectorAll('td').forEach(td => row.push(td.innerText));
+        if(row.length > 0 && tr.querySelector('td')?.innerText !== '全部已选课') rows.push(row);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '未选课名单');
+    XLSX.writeFile(wb, '未选课干事名单.xlsx');
+}
 
 function toggleAllStudent(){let c=$('checkAllStudent').checked;document.querySelectorAll('.studentCheck').forEach(i=>i.checked=c);}
 async function batchDelStudent(){
@@ -239,13 +265,14 @@ async function refreshStudent(){
 async function addStudent(){
     let uid=$('suid').value.trim(),name=$('sname').value.trim(),pwd=$('spwd').value.trim(),dept=$('sdept').value.trim();
     if(!uid||!name||!pwd||!dept){alert('请填写完整');return;}
-    await supabase.from('users').delete().eq('uid',uid);
+    if(pwd.length<6){alert('密码至少6位');return;}
+    await supabase.from('users').delete().eq('uid',uid).eq('role','user');
     await supabase.from('users').insert([{uid,name,pwd,role:'user',dept}]);
     $('suid').value=$('sname').value=$('spwd').value=$('sdept').value='';
     refreshStudent();
 }
 async function editStudent(uid){
-    const {data}=await supabase.from('users').select('*').eq('uid',uid).single();
+    const {data}=await supabase.from('users').select('*').eq('uid',uid).maybeSingle();
     if(data){$('suid').value=data.uid;$('sname').value=data.name;$('spwd').value=data.pwd;$('sdept').value=data.dept||'';}
 }
 async function delStudent(uid){if(!confirm('确定？'))return;await supabase.from('users').delete().eq('uid',uid);refreshStudent();}
@@ -258,8 +285,8 @@ async function importStudentExcel(){
         data.shift();
         for(let row of data){
             if(row.uid&&row.name&&row.pwd){
-                await supabase.from('users').delete().eq('uid',row.uid);
-                await supabase.from('users').insert([{uid:row.uid,name:row.name,pwd:row.pwd,role:'user',dept:row.dept||''}]);
+                await supabase.from('users').delete().eq('uid',String(row.uid)).eq('role','user');
+                await supabase.from('users').insert([{uid:String(row.uid),name:String(row.name),pwd:String(row.pwd),role:'user',dept:row.dept||''}]);
             }
         }
         refreshStudent();alert('导入成功');$('studentExcel').value='';
@@ -281,13 +308,14 @@ async function refreshTeacher(){
 async function addTeacher(){
     let uid=$('tuid').value.trim(),name=$('tname').value.trim(),pwd=$('tpwd').value.trim(),dept=$('tdept').value.trim();
     if(!uid||!name||!pwd||!dept){alert('请填写完整');return;}
-    await supabase.from('users').delete().eq('uid',uid);
+    if(pwd.length<6){alert('密码至少6位');return;}
+    await supabase.from('users').delete().eq('uid',uid).eq('role','teacher');
     await supabase.from('users').insert([{uid,name,pwd,role:'teacher',dept}]);
     $('tuid').value=$('tname').value=$('tpwd').value=$('tdept').value='';
     refreshTeacher();
 }
 async function editTeacher(uid){
-    const {data}=await supabase.from('users').select('*').eq('uid',uid).single();
+    const {data}=await supabase.from('users').select('*').eq('uid',uid).maybeSingle();
     if(data){$('tuid').value=data.uid;$('tname').value=data.name;$('tpwd').value=data.pwd;$('tdept').value=data.dept||'';}
 }
 async function delTeacher(uid){if(!confirm('确定？'))return;await supabase.from('users').delete().eq('uid',uid);refreshTeacher();}
@@ -300,8 +328,8 @@ async function importTeacherExcel(){
         data.shift();
         for(let row of data){
             if(row.uid&&row.name&&row.pwd){
-                await supabase.from('users').delete().eq('uid',row.uid);
-                await supabase.from('users').insert([{uid:row.uid,name:row.name,pwd:row.pwd,role:'teacher',dept:row.dept||''}]);
+                await supabase.from('users').delete().eq('uid',String(row.uid)).eq('role','teacher');
+                await supabase.from('users').insert([{uid:String(row.uid),name:String(row.name),pwd:String(row.pwd),role:'teacher',dept:row.dept||''}]);
             }
         }
         refreshTeacher();alert('导入成功');$('teacherExcel').value='';
@@ -330,7 +358,7 @@ async function addCourse(){
     refreshCourse();
 }
 async function editCourse(id){
-    const {data}=await supabase.from('courses').select('*').eq('id',id).single();
+    const {data}=await supabase.from('courses').select('*').eq('id',id).maybeSingle();
     if(data){$('cname').value=data.name;$('ctime').value=data.time;$('cloc').value=data.loc;$('cteacher').value=data.teacher;$('cview').value=data.viewDate||'';$('cselect').value=data.selectDate||'';}
 }
 async function delCourse(id){if(!confirm('确定？'))return;await supabase.from('courses').delete().eq('id',id);refreshCourse();}
@@ -344,8 +372,8 @@ async function importCourseExcel(){
         data.shift();
         for(let row of data){
             if(row.name){
-                let id="c"+Date.now();
-                await supabase.from('courses').insert([{id,name:row.name,time:row.time,loc:row.loc,teacher:row.teacher,viewDate:row.viewDate,selectDate:row.selectDate}]);
+                let id="c"+Date.now()+Math.random().toString(36).substr(2,5);
+                await supabase.from('courses').insert([{id,name:String(row.name),time:String(row.time||''),loc:String(row.loc||''),teacher:String(row.teacher||''),viewDate:String(row.viewDate||''),selectDate:String(row.selectDate||'')}]);
             }
         }
         refreshCourse();alert('导入成功');$('courseExcel').value='';

@@ -68,7 +68,7 @@ th{background:#f5f7fa;font-size:18px;}
 <input id="suid" placeholder="学号" style="width:18%">
 <input id="sname" placeholder="姓名" style="width:18%">
 <input id="spwd" placeholder="密码" style="width:18%">
-<input id="sdept" placeholder="所属部门" style="width:18%">
+<input id="sdept" placeholder="所属部门" style="width:18%" value="" readonly>
 <button onclick="addStudent()" style="width:18%">提交</button>
 <table>
 <tr><th><input type="checkbox" id="checkAll" onclick="toggleAll()"> 全选</th><th>学号</th><th>姓名</th><th>密码</th><th>部门</th><th>操作</th></tr>
@@ -107,7 +107,6 @@ th{background:#f5f7fa;font-size:18px;}
 const SUPABASE_URL = "https://nsyonfiaqniensvcrdao.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9uZmlhcW5pZW5zdmNyZGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjIyNDQsImV4cCI6MjA5MTYzODI0NH0.ZxgkRA8Wp2Zy9ujwkya3apTXHECHvmeilf8qf-3MY78";
 
-// ✅ 已修复 406 错误
 const { createClient } = supabase;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
@@ -130,6 +129,7 @@ $('teacherName').innerText = t.name;
 $('teacherAvatar').innerText = t.name.charAt(0);
 $('welcomeText').innerText = `欢迎回来，${t.name}！`;
 $('oldUid').innerText = t.uid;
+$('sdept').value = t.dept || '';
 
 function $(id){return document.getElementById(id)}
 
@@ -155,7 +155,8 @@ async function batchResetPwd(){
     if(!confirm(`确定重置选中的 ${checks.length} 名干事密码为 111111 吗？`)) return;
 
     let uids = Array.from(checks).map(cb => cb.getAttribute('data-uid'));
-    await supabase.from('users').update({ pwd: '111111' }).in('uid', uids);
+    const { error } = await supabase.from('users').update({ pwd: '111111' }).in('uid', uids);
+    if(error){ alert('重置失败：'+error.message); return; }
     refreshStudent();
     alert('✅ 批量重置密码成功！新密码：111111');
 }
@@ -166,7 +167,8 @@ async function batchDeleteStudent(){
     if(!confirm(`确定删除选中的 ${checks.length} 名干事吗？`)) return;
 
     let uids = Array.from(checks).map(cb => cb.getAttribute('data-uid'));
-    await supabase.from('users').delete().in('uid', uids);
+    const { error } = await supabase.from('users').delete().in('uid', uids);
+    if(error){ alert('删除失败：'+error.message); return; }
     $('checkAll').checked = false;
     refreshStudent();
     alert(`✅ 成功删除 ${checks.length} 名干事！`);
@@ -190,7 +192,8 @@ function logout(){
 
 async function deleteTeacherAccount() {
     if (!confirm("⚠️ 确定要永久注销当前账号吗？")) return;
-    await supabase.from('users').delete().eq('uid', t.uid).eq('role', 'teacher');
+    const { error } = await supabase.from('users').delete().eq('uid', t.uid).eq('role', 'teacher');
+    if(error){ alert('注销失败：'+error.message); return; }
     sessionStorage.removeItem('user');
     alert("✅ 账号注销成功！");
     location.href = "login.html";
@@ -222,9 +225,17 @@ async function addStudent(){
         dept = t.dept;
 
     if(!uid||!name||!pwd){alert('请填写完整');return;}
+    if(pwd.length<6){alert('密码至少6位');return;}
     
-    await supabase.from('users').delete().eq('uid', uid);
-    await supabase.from('users').insert([{ uid, name, pwd, role: 'user', dept }]);
+    const { error } = await supabase.from('users')
+        .delete()
+        .eq('uid', uid)
+        .eq('role', 'user');
+    
+    const { error: insertError } = await supabase.from('users')
+        .insert([{ uid, name, pwd, role: 'user', dept }]);
+    
+    if(insertError){ alert('添加失败：'+insertError.message); return; }
     
     $('suid').value='';
     $('sname').value='';
@@ -233,7 +244,7 @@ async function addStudent(){
 }
 
 async function editStudent(uid){
-    const { data } = await supabase.from('users').select('*').eq('uid', uid).single();
+    const { data } = await supabase.from('users').select('*').eq('uid', uid).maybeSingle();
     if(data){
         $('suid').value = data.uid;
         $('sname').value = data.name;
@@ -243,7 +254,8 @@ async function editStudent(uid){
 
 async function delStudent(uid){
     if(!confirm('确定删除？')) return;
-    await supabase.from('users').delete().eq('uid', uid);
+    const { error } = await supabase.from('users').delete().eq('uid', uid);
+    if(error){ alert('删除失败：'+error.message); return; }
     refreshStudent();
 }
 
@@ -257,7 +269,7 @@ async function importStudentExcel(){
         data.shift();
         for(let row of data){
             if(row.uid && row.name && row.pwd){
-                await supabase.from('users').delete().eq('uid', row.uid);
+                await supabase.from('users').delete().eq('uid', String(row.uid)).eq('role', 'user');
                 await supabase.from('users').insert([{
                     uid: String(row.uid),
                     name: String(row.name),
@@ -332,10 +344,12 @@ async function saveProfile(){
     let finalUid = newUid || t.uid;
     let finalPwd = newPwd || t.pwd;
 
-    await supabase.from('users')
+    const { error } = await supabase.from('users')
         .update({ uid: finalUid, pwd: finalPwd })
         .eq('uid', t.uid)
         .eq('role', 'teacher');
+
+    if(error){ alert('修改失败：'+error.message); return; }
 
     await supabase.from('selects')
         .update({ uid: finalUid })
@@ -343,8 +357,7 @@ async function saveProfile(){
 
     sessionStorage.setItem('user', JSON.stringify({
         ...t,
-        uid: finalUid,
-        pwd: finalPwd
+        uid: finalUid
     }));
 
     $('oldUid').innerText = finalUid;
