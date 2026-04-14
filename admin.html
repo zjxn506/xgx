@@ -230,81 +230,118 @@ th{background:#f5f7fa;font-size:18px;}
         refreshStudent();
     };
 
-    window.importStudentExcel = async function(){
-        let f = document.getElementById('studentExcel').files[0];
-        if(!f){alert('请选择文件');return;}
-        
-        let r = new FileReader();
-        r.onload = async e => {
-            try {
-                let wb = XLSX.read(e.target.result, {type:'binary'});
-                let sheet = wb.Sheets[wb.SheetNames[0]];
-                let data = XLSX.utils.sheet_to_json(sheet);
+  window.importStudentExcel = async function(){
+    let f = document.getElementById('studentExcel').files[0];
+    if(!f){alert('请选择文件');return;}
+    
+    let r = new FileReader();
+    r.onload = async e => {
+        try {
+            let wb = XLSX.read(e.target.result, {type:'binary'});
+            let sheet = wb.Sheets[wb.SheetNames[0]];
+            let data = XLSX.utils.sheet_to_json(sheet);
+            
+            console.log('读取到 ' + data.length + ' 条数据');
+            
+            let validData = [];
+            let uids = [];
+            
+            for(let row of data){
+                // 兼容各种列名
+                let uid = row['学号'] || row['uid'] || row['UID'] || row['工号'] || row['id'];
+                let name = row['姓名'] || row['name'] || row['Name'];
+                let pwd = row['密码'] || row['pwd'] || row['PWD'];
+                let dept = row['所属部门'] || row['dept'] || row['部门'] || '';
                 
-                console.log('读取到 ' + data.length + ' 条数据');
-                
-                let validData = [];
-                let uids = [];
-                
-                for(let row of data){
-                    let uid = row['学号'] || row['uid'] || row['UID'] || row['工号'];
-                    let name = row['姓名'] || row['name'] || row['Name'];
-                    let pwd = row['密码'] || row['pwd'] || row['PWD'];
-                    let dept = row['所属部门'] || row['dept'] || row['部门'] || '';
+                if(uid && name && pwd){
+                    uid = String(uid).trim();
+                    name = String(name).trim();
+                    pwd = String(pwd).trim();
+                    dept = String(dept).trim();
                     
-                    if(uid && name && pwd){
-                        uid = String(uid).trim();
-                        name = String(name).trim();
-                        pwd = String(pwd).trim();
-                        dept = String(dept).trim();
-                        
-                        validData.push({uid, name, pwd, role:'user', dept: dept||'未设置'});
-                        uids.push(uid);
-                    }
+                    validData.push({
+                        uid: uid,
+                        name: name,
+                        pwd: pwd,
+                        role: 'user',
+                        dept: dept || '未设置'
+                    });
+                    uids.push(uid);
                 }
-                
-                uids = [...new Set(uids)];
-                console.log('有效数据 ' + validData.length + ' 条');
-                
-                if(validData.length === 0){
-                    alert('没有有效数据');
-                    return;
-                }
-                
-                // 先删除已存在的
-                if(uids.length > 0){
-                    console.log('删除已存在的干事...');
-                    await sb.from('users').delete().in('uid', uids).eq('role', 'user');
-                }
-                
-                // 批量插入
-                const { error } = await sb.from('users').insert(validData);
-                
-                if(error){
-                    console.error('批量插入失败:', error);
-                    // 逐条插入
-                    let success = 0;
-                    for(let item of validData){
+            }
+            
+            // 去重
+            uids = [...new Set(uids)];
+            
+            console.log('有效数据 ' + validData.length + ' 条，UID数量：' + uids.length);
+            
+            if(validData.length === 0){
+                alert('没有有效数据，请检查Excel格式');
+                return;
+            }
+            
+            // 先删除已存在的
+            if(uids.length > 0){
+                console.log('正在删除已存在的干事...');
+                const { error: delError } = await sb.from('users').delete().in('uid', uids).eq('role', 'user');
+                if(delError){
+                    console.warn('批量删除失败，尝试逐条删除:', delError);
+                    // 逐条删除
+                    for(let uid of uids){
                         try {
-                            await sb.from('users').delete().eq('uid', item.uid);
-                            const { error: singleError } = await sb.from('users').insert([item]);
-                            if(!singleError) success++;
+                            await sb.from('users').delete().eq('uid', uid).eq('role', 'user');
                         } catch(err) {}
                     }
-                    alert('导入完成！成功 ' + success + ' 条');
-                } else {
-                    alert('✅ 导入成功！共导入 ' + validData.length + ' 条数据');
+                }
+            }
+            
+            // 批量插入
+            console.log('正在插入数据...');
+            const { error } = await sb.from('users').insert(validData);
+            
+            if(error){
+                console.error('批量插入失败:', error);
+                
+                // 逐条插入
+                let success = 0;
+                let failed = [];
+                
+                for(let item of validData){
+                    try {
+                        // 先删除再插入
+                        await sb.from('users').delete().eq('uid', item.uid).eq('role', 'user');
+                        const { error: singleError } = await sb.from('users').insert([item]);
+                        if(!singleError){
+                            success++;
+                        } else {
+                            failed.push(item.uid + '(' + singleError.message + ')');
+                        }
+                    } catch(err) {
+                        failed.push(item.uid + '(' + err.message + ')');
+                    }
                 }
                 
-                refreshStudent();
-                document.getElementById('studentExcel').value='';
-            } catch(err) {
-                console.error('导入错误:', err);
-                alert('导入失败：' + err.message);
+                console.log('逐条导入完成：成功 ' + success + ' 条，失败 ' + failed.length + ' 条');
+                
+                if(failed.length > 0){
+                    alert('导入完成！成功 ' + success + ' 条\n失败: ' + failed.slice(0,5).join(', ') + (failed.length>5?'...':''));
+                } else {
+                    alert('✅ 导入成功！共导入 ' + success + ' 条数据');
+                }
+            } else {
+                alert('✅ 导入成功！共导入 ' + validData.length + ' 条数据');
             }
-        };
-        r.readAsBinaryString(f);
+            
+            refreshStudent();
+            document.getElementById('studentExcel').value='';
+            
+        } catch(err) {
+            console.error('导入错误:', err);
+            alert('导入失败：' + err.message);
+        }
     };
+    r.readAsBinaryString(f);
+};
 
     // ========== 部长管理 ==========
     async function refreshTeacher(){
