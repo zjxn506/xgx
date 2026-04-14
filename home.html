@@ -75,13 +75,19 @@ input{width:100%;padding:10px;margin:5px 0;border:1px solid #ddd;border-radius:4
 const SUPABASE_URL = "https://nsyonfiaqniensvcrdao.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9uZmlhcW5pZW5zdmNyZGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjIyNDQsImV4cCI6MjA5MTYzODI0NH0.ZxgkRA8Wp2Zy9ujwkya3apTXHECHvmeilf8qf-3MY78";
 
-// ✅ 修复 406 错误的关键代码
+// ✅ 已修复 406 错误
 const { createClient } = supabase;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     persistSession: false,
     autoRefreshToken: false,
     detectSessionInUrl: false
+  },
+  global: {
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json'
+    }
   }
 });
 
@@ -90,8 +96,8 @@ if(!u || u.role !== 'user'){alert('请登录');location.href='login.html';}
 
 const now = new Date();
 const today = (now.getMonth()+1)+"-"+now.getDate();
-$('studentName').innerText = u.name;
-$('welcomeText').innerText = `欢迎您，${u.name}！`;
+document.getElementById('studentName').innerText = u.name;
+document.getElementById('welcomeText').innerText = `欢迎您，${u.name}！`;
 
 function $(id){return document.getElementById(id)}
 function showPage(id){
