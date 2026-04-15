@@ -11,6 +11,7 @@ body{background:#f5f7fa;min-height:100vh;}
 .top-bar .logo{font-size:28px;font-weight:bold;color:#303133;}
 .top-bar .user-info{display:flex;align-items:center;gap:15px;font-size:20px;}
 .top-bar .user-info .avatar{width:50px;height:50px;border-radius:50%;background:#409eff;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.btn-refresh{background:#67C23A;margin-right:15px;padding:8px 16px;}
 .sidebar{width:220px;background:#2b3a55;position:fixed;top:80px;left:0;bottom:0;padding-top:10px;}
 .sidebar .menu-item{color:#bfcbd9;height:60px;line-height:60px;padding:0 20px;cursor:pointer;transition:all 0.3s;border-left:4px solid transparent;font-size:18px;}
 .sidebar .menu-item:hover,.sidebar .menu-item.active{background:#202c3f;color:#fff;border-left-color:#409eff;}
@@ -39,6 +40,7 @@ th{background:#f5f7fa;font-size:18px;}
 <div class="top-bar">
 <div class="logo">管理员后台</div>
 <div class="user-info">
+<button class="btn-refresh" onclick="refreshCurrentPage()">🔄 刷新</button>
 <span id="adminName">管理员</span><div class="avatar">管</div>
 </div>
 </div>
@@ -175,6 +177,29 @@ th{background:#f5f7fa;font-size:18px;}
         if(pageId==='course') refreshCourse();
         if(pageId==='select') refreshSelect();
         if(pageId==='unselect') refreshUnselect();
+    };
+
+    // ========== 刷新当前页面 ==========
+    window.refreshCurrentPage = function(){
+        const activePage = document.querySelector('.page.active');
+        if(activePage.id === 'page-student'){
+            refreshStudent();
+            alert('干事列表已刷新');
+        } else if(activePage.id === 'page-teacher'){
+            refreshTeacher();
+            alert('部长列表已刷新');
+        } else if(activePage.id === 'page-course'){
+            refreshCourse();
+            alert('课程列表已刷新');
+        } else if(activePage.id === 'page-select'){
+            refreshSelect();
+            alert('选课列表已刷新');
+        } else if(activePage.id === 'page-unselect'){
+            refreshUnselect();
+            alert('未选课列表已刷新');
+        } else {
+            alert('当前页面无需刷新');
+        }
     };
 
     window.logout = async function(){

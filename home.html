@@ -11,6 +11,7 @@ body{background:#f5f7fa;min-height:100vh;}
 .top-bar .logo{font-size:20px;font-weight:bold;color:#303133;}
 .top-bar .user-info{display:flex;align-items:center;gap:15px;}
 .top-bar .user-info .avatar{width:36px;height:36px;border-radius:50%;background:#f5a623;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;}
+.btn-refresh{background:#67C23A;margin-right:10px;padding:6px 12px;font-size:14px;}
 .sidebar{width:200px;background:#304156;position:fixed;top:60px;left:0;bottom:0;padding-top:20px;}
 .sidebar .menu-item{color:#bfcbd9;height:50px;line-height:50px;padding:0 20px;cursor:pointer;transition:all 0.3s;border-left:3px solid transparent;}
 .sidebar .menu-item:hover,.sidebar .menu-item.active{background:#263445;color:#fff;border-left-color:#f5a623;}
@@ -34,6 +35,7 @@ input{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;}
 <div class="top-bar">
 <div class="logo">干事中心</div>
 <div class="user-info">
+<button class="btn-refresh" onclick="refreshCurrentPage()">🔄 刷新</button>
 <span id="studentName">干事</span><div class="avatar">干</div>
 </div>
 </div>
@@ -148,6 +150,23 @@ input{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;}
         if(id==='course') loadCourses();
         if(id==='my') loadMyCourses();
         if(id==='checkCourse') loadCheckCourses();
+    };
+
+    // ========== 刷新当前页面 ==========
+    window.refreshCurrentPage = function(){
+        const activePage = document.querySelector('.page.active');
+        if(activePage.id === 'page-course'){
+            loadCourses();
+            alert('课程列表已刷新');
+        } else if(activePage.id === 'page-my'){
+            loadMyCourses();
+            alert('我的课程已刷新');
+        } else if(activePage.id === 'page-checkCourse'){
+            loadCheckCourses();
+            alert('查课列表已刷新');
+        } else {
+            alert('当前页面无需刷新');
+        }
     };
 
     window.logout = async function(){

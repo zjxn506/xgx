@@ -24,6 +24,7 @@ button{background:#409eff;color:#fff;border:none;cursor:pointer;}
 .btn-red{background:#F56C6C;}
 .btn-green{background:#67C23A;}
 .btn-orange{background:#f5a623;}
+.btn-refresh{background:#67C23A;margin-right:15px;padding:8px 16px;}
 table{width:100%;border-collapse:collapse;margin:20px 0;}
 th,td{border:1px solid #ebeef5;padding:12px;text-align:center;font-size:14px;}
 th{background:#f5f7fa;font-size:16px;}
@@ -42,6 +43,7 @@ th{background:#f5f7fa;font-size:16px;}
 <div class="top-bar">
 <div class="logo">部长后台</div>
 <div class="user-info">
+<button class="btn-refresh" onclick="refreshCurrentPage()">🔄 刷新</button>
 <span id="teacherName"></span>
 <div class="avatar" id="teacherAvatar"></div>
 </div>
@@ -185,6 +187,23 @@ th{background:#f5f7fa;font-size:16px;}
         if(pageId==='select') refreshSelect();
         if(pageId==='student') refreshStudent();
         if(pageId==='checkCourse') refreshCheckCourse();
+    };
+
+    // ========== 刷新当前页面 ==========
+    window.refreshCurrentPage = function(){
+        const activePage = document.querySelector('.page.active');
+        if(activePage.id === 'page-student'){
+            refreshStudent();
+            alert('干事列表已刷新');
+        } else if(activePage.id === 'page-select'){
+            refreshSelect();
+            alert('选课列表已刷新');
+        } else if(activePage.id === 'page-checkCourse'){
+            refreshCheckCourse();
+            alert('查课列表已刷新');
+        } else {
+            alert('当前页面无需刷新');
+        }
     };
 
     window.logout = async function(){
