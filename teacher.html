@@ -108,18 +108,20 @@ th{background:#f5f7fa;font-size:16px;}
     <button class="btn-red" onclick="clearAllCheckCourses()">🧹 清空全部</button>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:15px;">
-    <input id="cweek" placeholder="星期" style="width:11%">
-    <input id="clesson" placeholder="课次" style="width:11%">
-    <input id="ccourse" placeholder="课程" style="width:14%">
-    <input id="cteacher2" placeholder="教师" style="width:11%">
-    <input id="ccapacity" placeholder="人数" style="width:10%" type="number">
-    <input id="csituation" placeholder="情况" style="width:11%">
-    <input id="cactual" placeholder="实到人数" style="width:11%" type="number">
-    <button onclick="addCheckCourse()" style="width:10%">提交</button>
+    <input id="cclass" placeholder="班级" style="width:10%">
+    <input id="cweek" placeholder="星期" style="width:10%">
+    <input id="clesson" placeholder="课次" style="width:10%">
+    <input id="ccourse" placeholder="课程" style="width:12%">
+    <input id="cteacher2" placeholder="教师" style="width:10%">
+    <input id="ccapacity" placeholder="人数" style="width:8%" type="number">
+    <input id="csituation" placeholder="情况" style="width:10%">
+    <input id="cactual" placeholder="实到人数" style="width:10%" type="number">
+    <button onclick="addCheckCourse()" style="width:8%">提交</button>
 </div>
 <table>
     <tr>
         <th><input type="checkbox" id="checkAllCheckCourse" onclick="toggleAllCheckCourse()"> 全选</th>
+        <th>班级</th>
         <th>星期</th><th>课次</th><th>课程</th><th>教师</th>
         <th>人数</th><th>情况</th><th>实到人数</th><th>操作</th>
     </tr>
@@ -266,7 +268,7 @@ th{background:#f5f7fa;font-size:16px;}
         r.readAsBinaryString(f);
     };
 
-    // ========== 查看选课（只显示有本部门干事选择的课程） ==========
+    // ========== 查看选课 ==========
     async function refreshSelect(){
         const { data: courses } = await sb.from('courses').select('*');
         const { data: selects } = await sb.from('selects').select('*');
@@ -370,6 +372,7 @@ th{background:#f5f7fa;font-size:16px;}
             data.forEach(c => {
                 html += `<tr>
                     <td><input type="checkbox" class="checkCourseCheck" data-id="${c.id}"></td>
+                    <td>${c.class || '—'}</td>
                     <td>${c.week || ''}</td>
                     <td>${c.lesson || ''}</td>
                     <td>${c.course || ''}</td>
@@ -384,7 +387,7 @@ th{background:#f5f7fa;font-size:16px;}
                 </tr>`;
             });
         }
-        $('checkCourseList').innerHTML = html || '<tr><td colspan="9">暂无查课数据</td></tr>';
+        $('checkCourseList').innerHTML = html || '<tr><td colspan="10">暂无查课数据</td></tr>';
     }
     window.refreshCheckCourse = refreshCheckCourse;
 
@@ -411,6 +414,7 @@ th{background:#f5f7fa;font-size:16px;}
     };
 
     window.addCheckCourse = async function(){
+        let classVal = $('cclass').value.trim();
         let week = $('cweek').value.trim();
         let lesson = $('clesson').value.trim();
         let course = $('ccourse').value.trim();
@@ -428,13 +432,13 @@ th{background:#f5f7fa;font-size:16px;}
         let id = 'check_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
         
         await sb.from('check_courses').insert([{
-            id, week, lesson, course, teacher, capacity,
+            id, class: classVal || null, week, lesson, course, teacher, capacity,
             situation: situation || null,
             actual: actual,
             dept: t.dept
         }]);
         
-        $('cweek').value = $('clesson').value = $('ccourse').value = $('cteacher2').value = '';
+        $('cclass').value = $('cweek').value = $('clesson').value = $('ccourse').value = $('cteacher2').value = '';
         $('ccapacity').value = $('csituation').value = $('cactual').value = '';
         
         refreshCheckCourse();
@@ -444,6 +448,7 @@ th{background:#f5f7fa;font-size:16px;}
     window.editCheckCourse = async function(id){
         const { data } = await sb.from('check_courses').select('*').eq('id', id).maybeSingle();
         if(data){
+            $('cclass').value = data.class || '';
             $('cweek').value = data.week || '';
             $('clesson').value = data.lesson || '';
             $('ccourse').value = data.course || '';
@@ -473,6 +478,7 @@ th{background:#f5f7fa;font-size:16px;}
                 
                 let valid = [];
                 for(let row of data){
+                    let classVal = row['班级'] || row['class'] || '';
                     let week = row['星期'] || row['week'] || '';
                     let lesson = row['课次'] || row['lesson'] || '';
                     let course = row['课程'] || row['course'] || '';
@@ -482,6 +488,7 @@ th{background:#f5f7fa;font-size:16px;}
                     if(week && lesson && course && teacher && capacity){
                         valid.push({
                             id: 'check_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                            class: classVal || null,
                             week: String(week), lesson: String(lesson), course: String(course),
                             teacher: String(teacher), capacity: capacity,
                             situation: row['情况'] || row['situation'] || null,
@@ -521,10 +528,11 @@ th{background:#f5f7fa;font-size:16px;}
             return;
         }
         
-        let rows = [['星期', '课次', '课程', '教师', '人数', '情况', '实到人数']];
+        let rows = [['班级', '星期', '课次', '课程', '教师', '人数', '情况', '实到人数']];
         
         data.forEach(c => {
             rows.push([
+                c.class || '',
                 c.week || '',
                 c.lesson || '',
                 c.course || '',
@@ -540,7 +548,7 @@ th{background:#f5f7fa;font-size:16px;}
         let fillRate = totalCapacity > 0 ? ((totalActual / totalCapacity) * 100).toFixed(1) : 0;
         
         rows.push([]);
-        rows.push(['统计', '', '', '', `总人数: ${totalCapacity}`, '', `总实到: ${totalActual}`, `出勤率: ${fillRate}%`]);
+        rows.push(['统计', '', '', '', '', `总人数: ${totalCapacity}`, '', `总实到: ${totalActual}`, `出勤率: ${fillRate}%`]);
         
         let ws = XLSX.utils.aoa_to_sheet(rows);
         let wb = XLSX.utils.book_new();

@@ -70,6 +70,7 @@ input{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;}
 <h3>查课情况填写 - 部门：<span id="deptName"></span></h3>
 <table>
 <tr>
+    <th>班级</th>
     <th>星期</th><th>课次</th><th>课程</th><th>教师</th>
     <th>人数</th><th>情况</th><th>实到人数</th><th>操作</th>
 </tr>
@@ -240,6 +241,7 @@ input{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;}
         if(data && data.length > 0){
             data.forEach(c => {
                 html += `<tr>
+                    <td>${c.class || '—'}</td>
                     <td>${c.week || ''}</td>
                     <td>${c.lesson || ''}</td>
                     <td>${c.course || ''}</td>
@@ -257,7 +259,7 @@ input{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;}
                 </tr>`;
             });
         }
-        document.getElementById('checkCourseList').innerHTML = html || '<tr><td colspan="8">暂无查课数据</td></tr>';
+        document.getElementById('checkCourseList').innerHTML = html || '<tr><td colspan="9">暂无查课数据</td></tr>';
     }
     window.loadCheckCourses = loadCheckCourses;
 
