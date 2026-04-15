@@ -23,13 +23,16 @@ input,button{padding:12px 20px;margin:8px 0;border-radius:6px;border:1px solid #
 button{background:#409eff;color:#fff;border:none;cursor:pointer;}
 .btn-red{background:#F56C6C;}
 .btn-green{background:#67C23A;}
+.btn-orange{background:#f5a623;}
 table{width:100%;border-collapse:collapse;margin:20px 0;}
 th,td{border:1px solid #ebeef5;padding:12px;text-align:center;font-size:14px;}
 th{background:#f5f7fa;font-size:16px;}
 .excel-box{margin:10px 0;}
 .form-item{margin:15px 0;}
 .form-item label{display:inline-block;width:100px;font-size:16px;}
-.unselect-btn{background:#f5a623;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;}
+.unselect-btn{background:#f5a623;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:14px;margin-left:10px;}
+.btn-group{display:flex;gap:10px;align-items:center;margin-bottom:20px;}
+.btn-group button{margin:0;}
 </style>
 </head>
 <body>
@@ -79,11 +82,17 @@ th{background:#f5f7fa;font-size:16px;}
 
 <div class="page" id="page-select">
 <h2>查看选课 - 部门：<span id="deptName2"></span></h2>
-<button class="btn-green" onclick="exportSelectExcel()">导出选课表</button>
-<button class="unselect-btn" onclick="showAllUnselected()">📋 查看所有未选课干事</button>
+<div class="btn-group">
+<button class="btn-green" onclick="exportSelectExcel()">📊 导出选课统计</button>
+<button class="unselect-btn" onclick="showNoCourseStudents()">👀 查看未选课干事</button>
+<button class="btn-red" onclick="exportNoCourseStudents()">📋 导出未选课干事</button>
+</div>
 <table id="selectTable">
-<tr><th>班级</th><th>时间</th><th>地点</th><th>辅导员</th><th>总人数</th><th>已选</th><th>未选</th><th>未选干事</th><th>操作</th></tr>
-<tbody id="selectList"></tbody>
+    <tr>
+        <th>班级</th><th>时间</th><th>地点</th><th>辅导员</th>
+        <th>本部门已选干事</th>
+    </tr>
+    <tbody id="selectList"></tbody>
 </table>
 </div>
 
@@ -160,17 +169,19 @@ th{background:#f5f7fa;font-size:16px;}
         location.href = "login.html";
     };
 
-    // 干事管理
+    // ========== 干事管理 ==========
     async function refreshStudent(){
         let students = await getMyStudents();
         let html='';
         students.forEach(s=>{
             html+=`<tr><td><input type="checkbox" class="studentCheck" data-uid="${s.uid}"></td><td>${s.uid}</td><td>${s.name}</td><td>${s.pwd}</td><td>${s.dept||'无'}</td><td><button onclick="editStudent('${s.uid}')">修改</button><button class="btn-red" onclick="delStudent('${s.uid}')">删除</button></td></tr>`;
         });
-        $('studentList').innerHTML=html||'<tr><td colspan="6">无</td></tr>';
+        $('studentList').innerHTML=html||'<tr><td colspan="6">暂无干事</td></tr>';
     }
     window.refreshStudent = refreshStudent;
+
     window.toggleAll = ()=> document.querySelectorAll('.studentCheck').forEach(cb=>cb.checked=$('checkAll').checked);
+
     window.batchResetPwd = async ()=>{
         let checks = document.querySelectorAll('.studentCheck:checked');
         if(!checks.length){alert('请选择');return;}
@@ -178,6 +189,7 @@ th{background:#f5f7fa;font-size:16px;}
         await sb.from('users').update({pwd:'111111'}).in('uid', Array.from(checks).map(cb=>cb.dataset.uid));
         refreshStudent(); alert('重置成功');
     };
+
     window.batchDeleteStudent = async ()=>{
         let checks = document.querySelectorAll('.studentCheck:checked');
         if(!checks.length){alert('请选择');return;}
@@ -185,6 +197,7 @@ th{background:#f5f7fa;font-size:16px;}
         await sb.from('users').delete().in('uid', Array.from(checks).map(cb=>cb.dataset.uid));
         refreshStudent(); alert('删除成功');
     };
+
     window.addStudent = async ()=>{
         let uid=$('suid').value.trim(), name=$('sname').value.trim(), pwd=$('spwd').value.trim();
         if(!uid||!name||!pwd){alert('请填写完整');return;}
@@ -192,11 +205,14 @@ th{background:#f5f7fa;font-size:16px;}
         $('suid').value=$('sname').value=$('spwd').value='';
         refreshStudent();
     };
+
     window.editStudent = async uid=>{
         const {data} = await sb.from('users').select('*').eq('uid',uid).maybeSingle();
         if(data){ $('suid').value=data.uid; $('sname').value=data.name; $('spwd').value=data.pwd; }
     };
+
     window.delStudent = async uid=>{ if(confirm('确定删除？')){ await sb.from('users').delete().eq('uid',uid); refreshStudent(); } };
+
     window.importStudentExcel = async ()=>{
         let f=$('studentExcel').files[0]; if(!f){alert('请选择文件');return;}
         let r=new FileReader();
@@ -217,7 +233,7 @@ th{background:#f5f7fa;font-size:16px;}
         r.readAsBinaryString(f);
     };
 
-    // 查看选课（只显示自己部门）
+    // ========== 查看选课（只显示有本部门干事选择的课程） ==========
     async function refreshSelect(){
         const { data: courses } = await sb.from('courses').select('*');
         const { data: selects } = await sb.from('selects').select('*');
@@ -225,90 +241,89 @@ th{background:#f5f7fa;font-size:16px;}
         const myStuIds = myStudents.map(s => s.uid);
         
         let html = '';
+        
         if(courses && courses.length > 0){
             courses.forEach(c => {
                 let myDeptSelects = (selects || []).filter(s => s.cid === c.id && myStuIds.includes(s.uid));
-                let totalCount = myStudents.length;
-                let selectedCount = myDeptSelects.length;
-                let unselectedCount = totalCount - selectedCount;
-                let selectedUids = myDeptSelects.map(s => s.uid);
-                let unselectedStudents = myStudents.filter(s => !selectedUids.includes(s.uid));
-                let unselectedNames = unselectedStudents.map(s => s.name + '(' + s.uid + ')').join('、') || '无';
                 
-                html += `<tr>
-                    <td>${c.name}</td><td>${c.time||'待定'}</td><td>${c.loc||'待定'}</td><td>${c.teacher||'待定'}</td>
-                    <td>${totalCount}</td><td>${selectedCount}</td><td>${unselectedCount}</td>
-                    <td style="max-width:150px;font-size:12px;color:#666;">${unselectedCount > 0 ? unselectedStudents.slice(0,3).map(s=>s.name).join('、')+(unselectedCount>3?'...':'') : '✅'}</td>
-                    <td><button class="unselect-btn" onclick="showUnselected('${c.id}', '${c.name}')">📋 查看名单</button></td>
-                </tr>`;
-            });
-        }
-        $('selectList').innerHTML = html || '<tr><td colspan="9">暂无课程</td></tr>';
-    }
-    window.refreshSelect = refreshSelect;
-
-    // 显示某个课程的未选干事名单
-    window.showUnselected = async function(cid, cname){
-        const myStudents = await getMyStudents();
-        const { data: selects } = await sb.from('selects').select('*').eq('cid', cid);
-        const selectedUids = (selects || []).map(s => s.uid);
-        const unselected = myStudents.filter(s => !selectedUids.includes(s.uid));
-        
-        if(unselected.length === 0){
-            alert(`【${cname}】\n所有干事都已选课！`);
-        } else {
-            let list = unselected.map(s => `${s.name}（${s.uid}）`).join('\n');
-            alert(`【${cname}】未选课干事（${unselected.length}人）：\n\n${list}`);
-        }
-    };
-
-    // 查看所有未选课干事
-    window.showAllUnselected = async function(){
-        const myStudents = await getMyStudents();
-        const { data: courses } = await sb.from('courses').select('*');
-        const { data: selects } = await sb.from('selects').select('*');
-        
-        let result = '';
-        let totalUnselected = 0;
-        
-        if(courses){
-            courses.forEach(c => {
-                let myDeptSelects = (selects || []).filter(s => s.cid === c.id && myStudents.some(stu => stu.uid === s.uid));
-                let selectedUids = myDeptSelects.map(s => s.uid);
-                let unselected = myStudents.filter(s => !selectedUids.includes(s.uid));
-                if(unselected.length > 0){
-                    result += `\n【${c.name}】未选 ${unselected.length} 人：\n`;
-                    result += unselected.map(s => `  ${s.name}（${s.uid}）`).join('\n') + '\n';
-                    totalUnselected += unselected.length;
+                // 只显示有本部门干事选择的课程
+                if(myDeptSelects.length > 0){
+                    let selectedNames = myDeptSelects.map(s => s.name).join('、');
+                    
+                    html += `<tr>
+                        <td>${c.name}</td>
+                        <td>${c.time || '待定'}</td>
+                        <td>${c.loc || '待定'}</td>
+                        <td>${c.teacher || '待定'}</td>
+                        <td style="text-align:left;padding-left:15px;">${selectedNames}</td>
+                    </tr>`;
                 }
             });
         }
         
-        if(totalUnselected === 0){
+        $('selectList').innerHTML = html || '<tr><td colspan="5" style="text-align:center;padding:20px;">暂无本部门干事的选课记录</td></tr>';
+    }
+    window.refreshSelect = refreshSelect;
+
+    // 导出一门课都没选的干事
+    window.exportNoCourseStudents = async function(){
+        const myStudents = await getMyStudents();
+        const { data: selects } = await sb.from('selects').select('*');
+        
+        let noCourseStudents = myStudents.filter(s => {
+            let studentSelects = (selects || []).filter(sel => sel.uid === s.uid);
+            return studentSelects.length === 0;
+        });
+        
+        if(noCourseStudents.length === 0){
+            alert('🎉 所有干事都已选课！');
+            return;
+        }
+        
+        let rows = [['学号', '姓名', '部门']];
+        noCourseStudents.forEach(s => rows.push([s.uid, s.name, s.dept || '']));
+        
+        let ws = XLSX.utils.aoa_to_sheet(rows);
+        let wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '未选课干事');
+        XLSX.writeFile(wb, `未选课干事_${t.dept}.xlsx`);
+        
+        alert(`✅ 导出成功！共 ${noCourseStudents.length} 名干事未选任何课程`);
+    };
+
+    // 查看一门课都没选的干事（弹窗）
+    window.showNoCourseStudents = async function(){
+        const myStudents = await getMyStudents();
+        const { data: selects } = await sb.from('selects').select('*');
+        
+        let noCourseStudents = myStudents.filter(s => {
+            let studentSelects = (selects || []).filter(sel => sel.uid === s.uid);
+            return studentSelects.length === 0;
+        });
+        
+        if(noCourseStudents.length === 0){
             alert('🎉 所有干事都已选课！');
         } else {
-            alert(`📋 未选课情况汇总：\n${result}`);
+            let list = noCourseStudents.map(s => `${s.name}（${s.uid}）`).join('\n');
+            alert(`📋 未选任何课程的干事（${noCourseStudents.length}人）：\n\n${list}`);
         }
     };
 
+    // 导出选课统计
     window.exportSelectExcel = async function(){
         const myStudents = await getMyStudents();
         const myStuIds = myStudents.map(s => s.uid);
         const { data: courses } = await sb.from('courses').select('*');
         const { data: selects } = await sb.from('selects').select('*');
         
-        let arr = [['班级','时间','地点','辅导员','总人数','已选人数','未选人数','未选干事']];
+        let arr = [['班级', '时间', '地点', '辅导员', '本部门已选干事']];
         if(courses){
             courses.forEach(c => {
                 let myDeptSelects = (selects || []).filter(s => s.cid === c.id && myStuIds.includes(s.uid));
-                let total = myStudents.length;
-                let selected = myDeptSelects.length;
-                let unselectedCount = total - selected;
-                let selectedUids = myDeptSelects.map(s => s.uid);
-                let unselected = myStudents.filter(s => !selectedUids.includes(s.uid));
-                let unselectedNames = unselected.map(s => s.name + '(' + s.uid + ')').join('、');
-                
-                arr.push([c.name, c.time||'', c.loc||'', c.teacher||'', total, selected, unselectedCount, unselectedNames]);
+                if(myDeptSelects.length > 0){
+                    let selectedNames = myDeptSelects.map(s => s.name).join('、');
+                    arr.push([c.name, c.time||'', c.loc||'', c.teacher||'', selectedNames]);
+                }
             });
         }
         
@@ -318,7 +333,7 @@ th{background:#f5f7fa;font-size:16px;}
         XLSX.writeFile(wb, `选课统计_${t.dept}.xlsx`);
     };
 
-    // 修改账户
+    // ========== 修改账户 ==========
     window.saveProfile = async function(){
         let newUid = $('newUid').value.trim();
         let newPwd = $('newPwd').value.trim();
