@@ -9,8 +9,8 @@ body{
     max-width:400px;
     margin:50px auto;
     font-family:Arial;
-    /* 永久有效、可公开访问的湖北经济学院法商学院校园背景图 */
-    background-image:url(https://img0.baidu.com/it/u=3809111111,3809111111&fm=253&fmt=auto&app=138&f=JPEG?w=1920&h=960);
+    /* 本地背景图片 */
+    background-image:url('./login.jpg');
     background-size:cover;
     background-position:center;
     background-attachment:fixed;
@@ -87,7 +87,7 @@ button{
     backdrop-filter:blur(8px);
     text-align:center;
     box-shadow:0 5px 20px rgba(0,0,0,0.2);
-    background-image:url(https://picsum.photos/id/1074/800/600);
+    background-image:url('./login.jpg');
     background-size:cover;
     background-position:center;
     color:#333;
@@ -327,7 +327,7 @@ button{
         document.getElementById('resetTipModal').style.display = 'none';
     };
 
-    document.getElementById('pwd').addEventListener('keydown', function(e) {own', function(e) {
+    document.getElementById('pwd').addEventListener('keydown', function(e) {
         if(e.key === 'Enter') window.login();
     });
 

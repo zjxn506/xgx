@@ -6,21 +6,26 @@
 <title>干事控制台</title>
 <style>
 * {margin:0;padding:0;box-sizing:border-box;font-family:"Microsoft Yahei",Arial,sans-serif;}
-body{background:#f5f7fa;min-height:100vh;}
-.top-bar{height:60px;background:#fff;border-bottom:1px solid #e4e7ed;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:fixed;top:0;left:0;right:0;z-index:999;}
+body{
+    background:url('./home.jpg') no-repeat center center fixed;
+    background-size:cover;
+    min-height:100vh;
+}
+.top-bar{height:60px;background:rgba(255,255,255,0.9);border-bottom:1px solid #e4e7ed;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:fixed;top:0;left:0;right:0;z-index:999;}
 .top-bar .logo{font-size:20px;font-weight:bold;color:#303133;}
 .top-bar .user-info{display:flex;align-items:center;gap:15px;}
 .top-bar .user-info .avatar{width:36px;height:36px;border-radius:50%;background:#f5a623;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;}
 .btn-refresh{background:#67C23A;margin-right:10px;padding:6px 12px;font-size:14px;}
-.sidebar{width:200px;background:#304156;position:fixed;top:60px;left:0;bottom:0;padding-top:20px;}
+.sidebar{width:200px;background:rgba(48,65,86,0.9);position:fixed;top:60px;left:0;bottom:0;padding-top:20px;}
 .sidebar .menu-item{color:#bfcbd9;height:50px;line-height:50px;padding:0 20px;cursor:pointer;transition:all 0.3s;border-left:3px solid transparent;}
 .sidebar .menu-item:hover,.sidebar .menu-item.active{background:#263445;color:#fff;border-left-color:#f5a623;}
 .sidebar .menu-item-danger{background:#F56C6C !important;border-left-color:#F56C6C !important;color:#fff !important;}
 .main-content{margin-left:200px;margin-top:60px;padding:20px;min-height:calc(100vh - 60px);}
-.welcome-card{background:#fff;border-radius:8px;padding:30px;box-shadow:0 2px 12px 0 rgba(0,0,0,0.1);}
+.welcome-card{background:rgba(255,255,255,0.95);border-radius:8px;padding:30px;box-shadow:0 2px 12px 0 rgba(0,0,0,0.1);}
 .welcome-card h1{color:#303133;margin-bottom:15px;}
 .page{display:none;}.page.active{display:block;}
-table{width:100%;border-collapse:collapse;margin:20px 0;}
+.page .page{background:rgba(255,255,255,0.9);border-radius:12px;padding:20px;}
+table{width:100%;border-collapse:collapse;margin:20px 0;background:rgba(255,255,255,0.95);}
 th,td{border:1px solid #eee;padding:12px;text-align:center;}
 th{background:#f5f7fa;}
 button{background:#409eff;color:white;padding:8px 12px;border:none;border-radius:4px;cursor:pointer;}
@@ -28,6 +33,7 @@ button{background:#409eff;color:white;padding:8px 12px;border:none;border-radius
 input{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;}
 .time-tip{color:red;font-size:12px;}
 .check-input{width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;}
+h3{color:#303133;margin-bottom:15px;}
 </style>
 </head>
 <body>
@@ -274,18 +280,29 @@ input{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;}
         let np = document.getElementById('newPwd').value.trim();
         if(!nu && !np){alert('至少改一项');return;}
         if(np && np.length<6){alert('密码至少6位');return;}
+        
         const updateData = {};
         if(nu) updateData.uid = nu;
         if(np) updateData.pwd = np;
-        const { error } = await sb.from('users').update(updateData).eq('uid',u.uid);
+        
+        const { error } = await sb.from('users').update(updateData).eq('uid', u.uid);
         if(error){alert('修改失败：'+error.message);return;}
-        if(nu){ await sb.from('selects').update({uid:nu}).eq('uid',u.uid); }
+        
+        if(nu){ 
+            await sb.from('selects').update({uid: nu}).eq('uid', u.uid); 
+        }
+        
         const updatedUser = {...u};
         if(nu) updatedUser.uid = nu;
-        sessionStorage.setItem('user',JSON.stringify(updatedUser));
+        sessionStorage.setItem('user', JSON.stringify(updatedUser));
+        
         alert('修改成功');
         document.getElementById('newUid').value='';
         document.getElementById('newPwd').value='';
+        
+        if(nu){
+            location.reload();
+        }
     };
 
     showPage('home');

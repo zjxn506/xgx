@@ -6,31 +6,41 @@
 <title>管理员后台</title>
 <style>
 * {margin:0;padding:0;box-sizing:border-box;font-family:"Microsoft Yahei",Arial,sans-serif;}
-body{background:#f5f7fa;min-height:100vh;}
-.top-bar{height:80px;background:#fff;border-bottom:1px solid #e4e7ed;display:flex;align-items:center;justify-content:space-between;padding:0 20px;}
+body{
+    background:url('./admin.jpg') no-repeat center center fixed;
+    background-size:cover;
+    min-height:100vh;
+}
+.top-bar{height:80px;background:rgba(255,255,255,0.9);border-bottom:1px solid #e4e7ed;display:flex;align-items:center;justify-content:space-between;padding:0 20px;}
 .top-bar .logo{font-size:28px;font-weight:bold;color:#303133;}
 .top-bar .user-info{display:flex;align-items:center;gap:15px;font-size:20px;}
 .top-bar .user-info .avatar{width:50px;height:50px;border-radius:50%;background:#409eff;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;}
 .btn-refresh{background:#67C23A;margin-right:15px;padding:8px 16px;}
-.sidebar{width:220px;background:#2b3a55;position:fixed;top:80px;left:0;bottom:0;padding-top:10px;}
+.btn-switch{color:#fff;border:none;border-radius:6px;cursor:pointer;margin-right:10px;padding:8px 16px;font-size:14px;}
+.btn-switch:hover{opacity:0.9;}
+.sidebar{width:220px;background:rgba(43,58,85,0.9);position:fixed;top:80px;left:0;bottom:0;padding-top:10px;}
 .sidebar .menu-item{color:#bfcbd9;height:60px;line-height:60px;padding:0 20px;cursor:pointer;transition:all 0.3s;border-left:4px solid transparent;font-size:18px;}
 .sidebar .menu-item:hover,.sidebar .menu-item.active{background:#202c3f;color:#fff;border-left-color:#409eff;}
 .sidebar .menu-item-danger{background:#F56C6C !important;border-left-color:#F56C6C !important;color:#fff !important;}
 .main-content{margin-left:220px;margin-top:80px;padding:30px;min-height:calc(100vh - 80px);}
-.page{display:none;background:#fff;border-radius:12px;padding:30px;box-shadow:0 2px 12px 0 rgba(0,0,0,0.1);}
+.page{display:none;background:rgba(255,255,255,0.9);border-radius:12px;padding:30px;box-shadow:0 2px 12px 0 rgba(0,0,0,0.1);}
 .page.active{display:block;}
-.welcome-card{background:#fff;border-radius:12px;padding:40px;box-shadow:0 2px 12px rgba(0,0,0,0.1);font-size:36px;font-weight:bold;color:#303133;}
+.welcome-card{background:rgba(255,255,255,0.95);border-radius:12px;padding:40px;box-shadow:0 2px 12px rgba(0,0,0,0.1);font-size:36px;font-weight:bold;color:#303133;}
 input,button{padding:12px 20px;margin:8px 0;border-radius:6px;border:1px solid #dcdfe6;font-size:16px;}
 button{background:#409eff;color:#fff;border:none;cursor:pointer;}
 .btn-red{background:#F56C6C;}
 .btn-green{background:#67C23A;}
 .btn-orange{background:#f5a623;}
-table{width:100%;border-collapse:collapse;margin:20px 0;}
+table{width:100%;border-collapse:collapse;margin:20px 0;background:rgba(255,255,255,0.95);}
 th,td{border:1px solid #ebeef5;padding:15px;text-align:center;font-size:16px;}
 th{background:#f5f7fa;font-size:18px;}
 .excel-box{margin:10px 0;}
 .form-item{margin:15px 0;}
 .form-item label{display:inline-block;width:100px;font-size:16px;}
+.btn-group{display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap;}
+.btn-group button{margin:0;}
+.status-on{color:#67C23A;font-weight:bold;}
+.status-off{color:#F56C6C;font-weight:bold;}
 </style>
 </head>
 <body>
@@ -41,6 +51,7 @@ th{background:#f5f7fa;font-size:18px;}
 <div class="logo">管理员后台</div>
 <div class="user-info">
 <button class="btn-refresh" onclick="refreshCurrentPage()">🔄 刷新</button>
+<button class="btn-switch" id="switchBackBtn" onclick="switchBackToTeacher()" style="background:#909399;display:none;">🔁 切换回部长</button>
 <span id="adminName">管理员</span><div class="avatar">管</div>
 </div>
 </div>
@@ -52,6 +63,7 @@ th{background:#f5f7fa;font-size:18px;}
 <div class="menu-item" onclick="showPage('course')">课程管理</div>
 <div class="menu-item" onclick="showPage('select')">查看选课</div>
 <div class="menu-item" onclick="showPage('unselect')">未选课干事</div>
+<div class="menu-item" onclick="showPage('switchPermission')">切换权限管理</div>
 <div class="menu-item" onclick="logout()">退出登录</div>
 </div>
 
@@ -132,6 +144,26 @@ th{background:#f5f7fa;font-size:18px;}
 <tbody id="unselectList"></tbody>
 </table>
 </div>
+
+<div class="page" id="page-switchPermission">
+<h2>切换权限管理</h2>
+<div class="btn-group">
+    <button class="btn-green" onclick="batchEnableSwitch()">✅ 批量开启</button>
+    <button class="btn-red" onclick="batchDisableSwitch()">❌ 批量关闭</button>
+    <button class="btn-refresh" onclick="refreshSwitchPermission()" style="background:#67C23A;">🔄 刷新列表</button>
+</div>
+<table>
+    <tr>
+        <th><input type="checkbox" id="checkAllSwitch" onclick="toggleAllSwitch()"> 全选</th>
+        <th>工号</th>
+        <th>姓名</th>
+        <th>负责部门</th>
+        <th>切换权限</th>
+        <th>操作</th>
+    </tr>
+    <tbody id="switchPermissionList"></tbody>
+</table>
+</div>
 </div>
 
 <script>
@@ -140,72 +172,77 @@ th{background:#f5f7fa;font-size:18px;}
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9uZmlhcW5pZW5zdmNyZGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjIyNDQsImV4cCI6MjA5MTYzODI0NH0.ZxgkRA8Wp2Zy9ujwkya3apTXHECHvmeilf8qf-3MY78";
 
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
     const user = JSON.parse(sessionStorage.getItem('user'));
     if(!user || user.role !== 'admin'){alert('请登录');location.href='login.html';}
     document.getElementById('adminName').innerText = user.name || '管理员';
 
-    // ========== 单点登录检测 ==========
-    let checkInterval = null;
+    // 切换回部长
+    function checkOriginalRole() {
+        const originalTeacher = sessionStorage.getItem('originalTeacher');
+        if(originalTeacher) {
+            document.getElementById('switchBackBtn').style.display = 'inline-block';
+        }
+    }
+    window.switchBackToTeacher = async function() {
+        const originalTeacher = sessionStorage.getItem('originalTeacher');
+        if(!originalTeacher) { alert('没有保存的部长信息'); return; }
+        const teacher = JSON.parse(originalTeacher);
+        const newToken = Date.now() + '-' + Math.random().toString(36).substr(2, 10);
+        await sb.from('users').update({ session_token: newToken }).eq('uid', teacher.uid);
+        await sb.from('users').update({ session_token: null }).eq('uid', 'admin');
+        teacher.session_token = newToken;
+        sessionStorage.setItem('user', JSON.stringify(teacher));
+        sessionStorage.removeItem('originalTeacher');
+        alert('已切换回部长');
+        location.href = 'teacher.html';
+    };
+    setTimeout(checkOriginalRole, 500);
 
-    async function checkSession() {
-        if(!user) return;
+    // 单点登录检测
+    let checkInterval = setInterval(async () => {
         try {
-            const { data, error } = await sb.from('users').select('session_token').eq('uid', user.uid).maybeSingle();
-            if(error) return;
+            const { data } = await sb.from('users').select('session_token').eq('uid', user.uid).maybeSingle();
             if(data && data.session_token && data.session_token !== user.session_token) {
                 clearInterval(checkInterval);
                 sessionStorage.removeItem('user');
                 const kickModal = document.createElement('div');
                 kickModal.style.cssText = 'display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;z-index:10000;';
-                kickModal.innerHTML = `<div style="width:350px;padding:30px;border-radius:12px;background:#fff;text-align:center;"><h3 style="color:#f56c6c;margin-bottom:15px;">⚠️ 登录失效</h3><p style="margin-bottom:20px;color:#666;">您的账号已在其他地方登录</p><button onclick="location.href='login.html'" style="width:120px;padding:10px;background:#409eff;color:#fff;border:none;border-radius:6px;cursor:pointer;">重新登录</button></div>`;
+                kickModal.innerHTML = '<div style="width:350px;padding:30px;border-radius:12px;background:#fff;text-align:center;"><h3 style="color:#f56c6c;">⚠️ 登录失效</h3><p>您的账号已在其他地方登录</p><button onclick="location.href=\'login.html\'" style="padding:10px 20px;background:#409eff;color:#fff;border:none;border-radius:6px;">重新登录</button></div>';
                 document.body.appendChild(kickModal);
             }
         } catch(err) {}
-    }
-    checkInterval = setInterval(checkSession, 5000);
+    }, 5000);
 
-    window.$ = function(id){return document.getElementById(id);};
+    window.$ = id => document.getElementById(id);
     
     window.showPage = function(pageId){
         document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
         document.querySelectorAll('.menu-item').forEach(m=>m.classList.remove('active'));
-        document.getElementById('page-'+pageId).classList.add('active');
-        document.querySelector(`.menu-item[onclick="showPage('${pageId}')"]`).classList.add('active');
+        $('page-'+pageId).classList.add('active');
+        document.querySelector('.menu-item[onclick="showPage(\''+pageId+'\')"]').classList.add('active');
         if(pageId==='student') refreshStudent();
         if(pageId==='teacher') refreshTeacher();
         if(pageId==='course') refreshCourse();
         if(pageId==='select') refreshSelect();
         if(pageId==='unselect') refreshUnselect();
+        if(pageId==='switchPermission') refreshSwitchPermission();
     };
 
-    // ========== 刷新当前页面 ==========
     window.refreshCurrentPage = function(){
         const activePage = document.querySelector('.page.active');
-        if(activePage.id === 'page-student'){
-            refreshStudent();
-            alert('干事列表已刷新');
-        } else if(activePage.id === 'page-teacher'){
-            refreshTeacher();
-            alert('部长列表已刷新');
-        } else if(activePage.id === 'page-course'){
-            refreshCourse();
-            alert('课程列表已刷新');
-        } else if(activePage.id === 'page-select'){
-            refreshSelect();
-            alert('选课列表已刷新');
-        } else if(activePage.id === 'page-unselect'){
-            refreshUnselect();
-            alert('未选课列表已刷新');
-        } else {
-            alert('当前页面无需刷新');
-        }
+        if(activePage.id === 'page-student'){ refreshStudent(); alert('干事列表已刷新'); }
+        else if(activePage.id === 'page-teacher'){ refreshTeacher(); alert('部长列表已刷新'); }
+        else if(activePage.id === 'page-course'){ refreshCourse(); alert('课程列表已刷新'); }
+        else if(activePage.id === 'page-select'){ refreshSelect(); alert('选课列表已刷新'); }
+        else if(activePage.id === 'page-unselect'){ refreshUnselect(); alert('未选课列表已刷新'); }
+        else if(activePage.id === 'page-switchPermission'){ refreshSwitchPermission(); alert('权限列表已刷新'); }
+        else { alert('当前页面无需刷新'); }
     };
 
     window.logout = async function(){
         if(confirm('确定退出？')){
             clearInterval(checkInterval);
-            if(user){ await sb.from('users').update({ session_token: null }).eq('uid', user.uid); }
+            await sb.from('users').update({ session_token: null }).eq('uid', user.uid);
             sessionStorage.removeItem('user');
             location.href='login.html';
         }
@@ -220,83 +257,76 @@ th{background:#f5f7fa;font-size:18px;}
                 html+=`<tr><td><input type="checkbox" class="studentCheck" data-uid="${s.uid}"></td><td>${s.uid}</td><td>${s.name}</td><td>${s.pwd}</td><td>${s.dept||'未设置'}</td><td><button onclick="editStudent('${s.uid}')">修改</button> <button class="btn-red" onclick="delStudent('${s.uid}')">删除</button></td></tr>`;
             });
         }
-        document.getElementById('studentList').innerHTML=html||'<tr><td colspan="6">暂无干事</td></tr>';
+        $('studentList').innerHTML=html||'<tr><td colspan="6">暂无干事</td></tr>';
     }
     window.refreshStudent = refreshStudent;
-
-    window.toggleAllStudent = function(){
-        let c = document.getElementById('checkAllStudent').checked;
-        document.querySelectorAll('.studentCheck').forEach(i=>i.checked=c);
-    };
-
-    window.batchDelStudent = async function(){
+    window.toggleAllStudent = ()=> document.querySelectorAll('.studentCheck').forEach(i=>i.checked=$('checkAllStudent').checked);
+    window.batchDelStudent = async ()=>{
         let checks = document.querySelectorAll('.studentCheck:checked');
-        if(checks.length===0){alert('请选择');return;}
+        if(!checks.length){alert('请选择');return;}
         if(!confirm('确定删除选中的干事？'))return;
-        let uids = Array.from(checks).map(c=>c.dataset.uid);
-        await sb.from('users').delete().in('uid',uids);
-        refreshStudent();
-        alert('删除成功');
+        await sb.from('users').delete().in('uid', Array.from(checks).map(c=>c.dataset.uid));
+        refreshStudent(); alert('删除成功');
     };
-
-    window.addStudent = async function(){
-        let uid = document.getElementById('suid').value.trim();
-        let name = document.getElementById('sname').value.trim();
-        let pwd = document.getElementById('spwd').value.trim();
-        let dept = document.getElementById('sdept').value.trim();
-        if(!uid||!name||!pwd||!dept){alert('请填写完整');return;}
-        if(pwd.length<6){alert('密码至少6位');return;}
-        const { error } = await sb.from('users').upsert([{uid,name,pwd,role:'user',dept}], {onConflict: 'uid'});
-        if(error){alert('添加失败：'+error.message);return;}
-        document.getElementById('suid').value=document.getElementById('sname').value=document.getElementById('spwd').value=document.getElementById('sdept').value='';
-        refreshStudent();
-        alert('添加成功');
-    };
-
+    
     window.editStudent = async function(uid){
         const {data} = await sb.from('users').select('*').eq('uid',uid).maybeSingle();
         if(data){
-            document.getElementById('suid').value=data.uid;
-            document.getElementById('sname').value=data.name;
-            document.getElementById('spwd').value=data.pwd;
-            document.getElementById('sdept').value=data.dept||'';
+            $('suid').value=data.uid;
+            $('sname').value=data.name;
+            $('spwd').value=data.pwd;
+            $('sdept').value=data.dept||'';
+            window.oldStudentUid = uid;
         }
     };
-
-    window.delStudent = async function(uid){
-        if(!confirm('确定删除？'))return;
-        await sb.from('users').delete().eq('uid',uid);
+    
+    window.addStudent = async function(){
+        let uid = $('suid').value.trim();
+        let name = $('sname').value.trim();
+        let pwd = $('spwd').value.trim();
+        let dept = $('sdept').value.trim();
+        if(!uid||!name||!pwd||!dept){alert('请填写完整');return;}
+        if(pwd.length<6){alert('密码至少6位');return;}
+        const oldUid = window.oldStudentUid;
+        const { error } = await sb.from('users').upsert([{uid,name,pwd,role:'user',dept}], {onConflict: 'uid'});
+        if(error){alert('添加失败：'+error.message);return;}
+        if(oldUid && oldUid !== uid){
+            await sb.from('selects').update({uid: uid}).eq('uid', oldUid);
+        }
+        $('suid').value=$('sname').value=$('spwd').value=$('sdept').value='';
+        window.oldStudentUid = null;
         refreshStudent();
+        alert('保存成功');
     };
-
+    
+    window.delStudent = async uid=>{ if(confirm('确定删除？')){ await sb.from('users').delete().eq('uid',uid); refreshStudent(); } };
+    
     window.importStudentExcel = async function(){
-        let f = document.getElementById('studentExcel').files[0];
-        if(!f){alert('请选择文件');return;}
+        let f = $('studentExcel').files[0]; if(!f){alert('请选择文件');return;}
         let r = new FileReader();
         r.onload = async e => {
             try {
                 let wb = XLSX.read(e.target.result, {type:'binary'});
-                let sheet = wb.Sheets[wb.SheetNames[0]];
-                let data = XLSX.utils.sheet_to_json(sheet);
-                let validData = [];
+                let data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                let valid = [];
                 for(let row of data){
-                    let uid = row['学号'] || row['uid'] || row['UID'] || row['工号'] || row['id'];
-                    let name = row['姓名'] || row['name'] || row['Name'];
-                    let pwd = row['密码'] || row['pwd'] || row['PWD'];
-                    let dept = row['所属部门'] || row['dept'] || row['部门'] || '';
+                    let uid = row['学号']||row['uid']||row['UID'];
+                    let name = row['姓名']||row['name'];
+                    let pwd = row['密码']||row['pwd'];
+                    let dept = row['所属部门']||row['dept']||'';
                     if(uid && name && pwd){
-                        validData.push({uid: String(uid).trim(), name: String(name).trim(), pwd: String(pwd).trim(), role:'user', dept: String(dept).trim()||'未设置'});
+                        valid.push({uid: String(uid).trim(), name: String(name).trim(), pwd: String(pwd).trim(), role:'user', dept: String(dept).trim()||'未设置'});
                     }
                 }
-                if(validData.length === 0){alert('没有有效数据');return;}
+                if(!valid.length){alert('没有有效数据');return;}
                 let success = 0;
-                for(let item of validData){
+                for(let item of valid){
                     const { error } = await sb.from('users').upsert([item], {onConflict: 'uid'});
                     if(!error) success++;
                 }
-                setTimeout(() => refreshStudent(), 500);
+                setTimeout(refreshStudent, 500);
                 alert('✅ 导入成功！共 ' + success + ' 条');
-                document.getElementById('studentExcel').value='';
+                $('studentExcel').value='';
             } catch(err) { alert('导入失败：' + err.message); }
         };
         r.readAsBinaryString(f);
@@ -311,93 +341,83 @@ th{background:#f5f7fa;font-size:18px;}
                 html+=`<tr><td><input type="checkbox" class="teacherCheck" data-uid="${t.uid}"></td><td>${t.uid}</td><td>${t.name}</td><td>${t.pwd}</td><td>${t.dept||'未设置'}</td><td><button onclick="editTeacher('${t.uid}')">修改</button> <button class="btn-red" onclick="delTeacher('${t.uid}')">删除</button></td></tr>`;
             });
         }
-        document.getElementById('teacherList').innerHTML=html||'<tr><td colspan="6">暂无部长</td></tr>';
+        $('teacherList').innerHTML=html||'<tr><td colspan="6">暂无部长</td></tr>';
     }
     window.refreshTeacher = refreshTeacher;
-
-    window.toggleAllTeacher = function(){
-        let c = document.getElementById('checkAllTeacher').checked;
-        document.querySelectorAll('.teacherCheck').forEach(i=>i.checked=c);
-    };
-
-    window.batchResetTeacherPwd = async function(){
+    window.toggleAllTeacher = ()=> document.querySelectorAll('.teacherCheck').forEach(i=>i.checked=$('checkAllTeacher').checked);
+    window.batchResetTeacherPwd = async ()=>{
         let checks = document.querySelectorAll('.teacherCheck:checked');
-        if(checks.length===0){alert('请选择');return;}
+        if(!checks.length){alert('请选择');return;}
         if(!confirm('确定重置选中部长的密码为 666666？'))return;
-        let uids = Array.from(checks).map(c=>c.dataset.uid);
-        await sb.from('users').update({pwd:'666666'}).in('uid',uids);
-        refreshTeacher();
-        alert('重置成功');
+        await sb.from('users').update({pwd:'666666'}).in('uid', Array.from(checks).map(c=>c.dataset.uid));
+        refreshTeacher(); alert('重置成功');
     };
-
-    window.batchDelTeacher = async function(){
+    window.batchDelTeacher = async ()=>{
         let checks = document.querySelectorAll('.teacherCheck:checked');
-        if(checks.length===0){alert('请选择');return;}
+        if(!checks.length){alert('请选择');return;}
         if(!confirm('确定删除选中的部长？'))return;
-        let uids = Array.from(checks).map(c=>c.dataset.uid);
-        await sb.from('users').delete().in('uid',uids);
-        refreshTeacher();
-        alert('删除成功');
+        await sb.from('users').delete().in('uid', Array.from(checks).map(c=>c.dataset.uid));
+        refreshTeacher(); alert('删除成功');
     };
-
-    window.addTeacher = async function(){
-        let uid = document.getElementById('tuid').value.trim();
-        let name = document.getElementById('tname').value.trim();
-        let pwd = document.getElementById('tpwd').value.trim();
-        let dept = document.getElementById('tdept').value.trim();
-        if(!uid||!name||!pwd||!dept){alert('请填写完整');return;}
-        if(pwd.length<6){alert('密码至少6位');return;}
-        const { error } = await sb.from('users').upsert([{uid,name,pwd,role:'teacher',dept}], {onConflict: 'uid'});
-        if(error){alert('添加失败：'+error.message);return;}
-        document.getElementById('tuid').value=document.getElementById('tname').value=document.getElementById('tpwd').value=document.getElementById('tdept').value='';
-        refreshTeacher();
-        alert('添加成功');
-    };
-
+    
     window.editTeacher = async function(uid){
         const {data} = await sb.from('users').select('*').eq('uid',uid).maybeSingle();
         if(data){
-            document.getElementById('tuid').value=data.uid;
-            document.getElementById('tname').value=data.name;
-            document.getElementById('tpwd').value=data.pwd;
-            document.getElementById('tdept').value=data.dept||'';
+            $('tuid').value=data.uid;
+            $('tname').value=data.name;
+            $('tpwd').value=data.pwd;
+            $('tdept').value=data.dept||'';
+            window.oldTeacherUid = uid;
         }
     };
-
-    window.delTeacher = async function(uid){
-        if(!confirm('确定删除？'))return;
-        await sb.from('users').delete().eq('uid',uid);
+    
+    window.addTeacher = async function(){
+        let uid = $('tuid').value.trim();
+        let name = $('tname').value.trim();
+        let pwd = $('tpwd').value.trim();
+        let dept = $('tdept').value.trim();
+        if(!uid||!name||!pwd||!dept){alert('请填写完整');return;}
+        if(pwd.length<6){alert('密码至少6位');return;}
+        const oldUid = window.oldTeacherUid;
+        const { error } = await sb.from('users').upsert([{uid,name,pwd,role:'teacher',dept}], {onConflict: 'uid'});
+        if(error){alert('添加失败：'+error.message);return;}
+        if(oldUid && oldUid !== uid){
+            await sb.from('selects').update({uid: uid}).eq('uid', oldUid);
+        }
+        $('tuid').value=$('tname').value=$('tpwd').value=$('tdept').value='';
+        window.oldTeacherUid = null;
         refreshTeacher();
+        alert('保存成功');
     };
-
+    
+    window.delTeacher = async uid=>{ if(confirm('确定删除？')){ await sb.from('users').delete().eq('uid',uid); refreshTeacher(); } };
+    
     window.importTeacherExcel = async function(){
-        let f = document.getElementById('teacherExcel').files[0];
-        if(!f){alert('请选择文件');return;}
+        let f = $('teacherExcel').files[0]; if(!f){alert('请选择文件');return;}
         let r = new FileReader();
         r.onload = async e => {
             try {
                 let wb = XLSX.read(e.target.result, {type:'binary'});
-                let sheet = wb.Sheets[wb.SheetNames[0]];
-                let data = XLSX.utils.sheet_to_json(sheet);
-                let validData = [];
+                let data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                let valid = [];
                 for(let row of data){
-                    let uid = row['工号'] || row['uid'] || row['UID'] || row['学号'] || row['id'];
-                    let name = row['姓名'] || row['name'] || row['Name'];
-                    let pwd = row['密码'] || row['pwd'] || row['PWD'];
-                    let dept = row['负责部门'] || row['dept'] || row['部门'] || '';
+                    let uid = row['工号']||row['uid']||row['UID'];
+                    let name = row['姓名']||row['name'];
+                    let pwd = row['密码']||row['pwd'];
+                    let dept = row['负责部门']||row['dept']||'';
                     if(uid && name && pwd){
-                        validData.push({uid: String(uid).trim(), name: String(name).trim(), pwd: String(pwd).trim(), role:'teacher', dept: String(dept).trim()||'未设置'});
+                        valid.push({uid: String(uid).trim(), name: String(name).trim(), pwd: String(pwd).trim(), role:'teacher', dept: String(dept).trim()||'未设置'});
                     }
                 }
-                if(validData.length === 0){alert('没有有效数据');return;}
+                if(!valid.length){alert('没有有效数据');return;}
                 let success = 0;
-                for(let item of validData){
+                for(let item of valid){
                     const { error } = await sb.from('users').upsert([item], {onConflict: 'uid'});
                     if(!error) success++;
                 }
-                setTimeout(() => refreshTeacher(), 500);
+                setTimeout(refreshTeacher, 500);
                 alert('✅ 导入成功！共 ' + success + ' 条');
-                document.getElementById('teacherExcel').value='';
+                $('teacherExcel').value='';
             } catch(err) { alert('导入失败：' + err.message); }
         };
         r.readAsBinaryString(f);
@@ -412,86 +432,54 @@ th{background:#f5f7fa;font-size:18px;}
                 html+=`<tr><td>${c.name||''}</td><td>${c.time||'待定'}</td><td>${c.loc||'待定'}</td><td>${c.teacher||'待定'}</td><td>${c.viewDate||'无限制'}</td><td>${c.selectDate||'无限制'}</td><td><button onclick="editCourse('${c.id}')">修改</button> <button class="btn-red" onclick="delCourse('${c.id}')">删除</button></td></tr>`;
             });
         }
-        document.getElementById('courseList').innerHTML=html||'<tr><td colspan="7">暂无课程</td></tr>';
+        $('courseList').innerHTML=html||'<tr><td colspan="7">暂无课程</td></tr>';
     }
     window.refreshCourse = refreshCourse;
-
     window.addCourse = async function(){
-        let name = document.getElementById('cname').value.trim();
-        let time = document.getElementById('ctime').value.trim();
-        let loc = document.getElementById('cloc').value.trim();
-        let teacher = document.getElementById('cteacher').value.trim();
-        let viewDate = document.getElementById('cview').value.trim();
-        let selectDate = document.getElementById('cselect').value.trim();
-        if(!name||!time||!loc||!teacher){alert('请填写完整（班级、时间、地点、辅导员）');return;}
+        let name = $('cname').value.trim(), time = $('ctime').value.trim(), loc = $('cloc').value.trim(), teacher = $('cteacher').value.trim();
+        let viewDate = $('cview').value.trim(), selectDate = $('cselect').value.trim();
+        if(!name||!time||!loc||!teacher){alert('请填写完整');return;}
         let id = "course_" + Date.now();
         const insertData = {id, name, time, loc, teacher};
         if(viewDate) insertData.viewDate = viewDate;
         if(selectDate) insertData.selectDate = selectDate;
         const { error } = await sb.from('courses').insert([insertData]);
         if(error){alert('添加失败：'+error.message);return;}
-        document.getElementById('cname').value=document.getElementById('ctime').value=document.getElementById('cloc').value=document.getElementById('cteacher').value=document.getElementById('cview').value=document.getElementById('cselect').value='';
-        refreshCourse();
-        alert('添加成功');
+        $('cname').value=$('ctime').value=$('cloc').value=$('cteacher').value=$('cview').value=$('cselect').value='';
+        refreshCourse(); alert('添加成功');
     };
-
     window.editCourse = async function(id){
         const {data} = await sb.from('courses').select('*').eq('id',id).maybeSingle();
         if(data){
-            document.getElementById('cname').value=data.name||'';
-            document.getElementById('ctime').value=data.time||'';
-            document.getElementById('cloc').value=data.loc||'';
-            document.getElementById('cteacher').value=data.teacher||'';
-            document.getElementById('cview').value=data.viewDate||'';
-            document.getElementById('cselect').value=data.selectDate||'';
+            $('cname').value=data.name||''; $('ctime').value=data.time||'';
+            $('cloc').value=data.loc||''; $('cteacher').value=data.teacher||'';
+            $('cview').value=data.viewDate||''; $('cselect').value=data.selectDate||'';
         }
     };
-
-    window.delCourse = async function(id){
-        if(!confirm('确定删除？'))return;
-        await sb.from('courses').delete().eq('id',id);
-        refreshCourse();
-    };
-
-    window.clearCourses = async function(){
-        if(!confirm('确定清空所有课程？'))return;
-        await sb.from('courses').delete().gt('id','');
-        refreshCourse();
-    };
-
+    window.delCourse = async id=>{ if(confirm('确定删除？')){ await sb.from('courses').delete().eq('id',id); refreshCourse(); } };
+    window.clearCourses = async ()=>{ if(confirm('确定清空所有课程？')){ await sb.from('courses').delete().gt('id',''); refreshCourse(); } };
     window.importCourseExcel = async function(){
-        let f = document.getElementById('courseExcel').files[0];
-        if(!f){alert('请选择文件');return;}
+        let f = $('courseExcel').files[0]; if(!f){alert('请选择文件');return;}
         let r = new FileReader();
         r.onload = async e => {
             try {
                 let wb = XLSX.read(e.target.result, {type:'binary'});
-                let sheet = wb.Sheets[wb.SheetNames[0]];
-                let data = XLSX.utils.sheet_to_json(sheet);
-                let success = 0, failed = [];
+                let data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                let success = 0;
                 for(let row of data){
-                    try {
-                        let name = row['班级名称'] || row['name'] || row['班级'] || row['课程名称'] || '';
-                        if(!name || String(name).trim() === '') continue;
-                        name = String(name).trim();
-                        let time = String(row['时间'] || row['time'] || '').trim() || '待定';
-                        let loc = String(row['地点'] || row['loc'] || row['location'] || '').trim() || '待定';
-                        let teacher = String(row['辅导员'] || row['teacher'] || '').trim() || '待定';
-                        let viewDate = String(row['可查看时间'] || row['viewDate'] || '').trim() || null;
-                        let selectDate = String(row['可选择时间'] || row['selectDate'] || '').trim() || null;
-                        let id = 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
-                        const insertData = {id, name, time, loc, teacher};
-                        if(viewDate) insertData.viewDate = viewDate;
-                        if(selectDate) insertData.selectDate = selectDate;
-                        const { error } = await sb.from('courses').insert([insertData]);
-                        if(error){ failed.push(name); } else { success++; }
-                        await new Promise(resolve => setTimeout(resolve, 50));
-                    } catch(err) {}
+                    let name = row['班级名称']||row['name']||row['班级']||'';
+                    if(!name) continue;
+                    let id = 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2,8);
+                    let time = row['时间']||row['time']||'待定';
+                    let loc = row['地点']||row['loc']||'待定';
+                    let teacher = row['辅导员']||row['teacher']||'待定';
+                    const { error } = await sb.from('courses').insert([{id, name: String(name).trim(), time: String(time).trim(), loc: String(loc).trim(), teacher: String(teacher).trim()}]);
+                    if(!error) success++;
+                    await new Promise(r=>setTimeout(r,30));
                 }
-                if(failed.length > 0){ alert('导入完成！成功 ' + success + ' 条\n失败：' + failed.slice(0,5).join(', ')); }
-                else { alert('✅ 导入成功！共 ' + success + ' 条课程'); }
-                setTimeout(() => refreshCourse(), 500);
-                document.getElementById('courseExcel').value='';
+                setTimeout(refreshCourse, 500);
+                alert('✅ 导入成功！共 ' + success + ' 条');
+                $('courseExcel').value='';
             } catch(err) { alert('导入失败：' + err.message); }
         };
         r.readAsBinaryString(f);
@@ -507,13 +495,12 @@ th{background:#f5f7fa;font-size:18px;}
             courses.forEach(c=>{
                 let arr=(selects||[]).filter(s=>s.cid===c.id).map(s=>s.name+'('+s.uid+')').join(' ')||'无';
                 let depts=(selects||[]).filter(s=>s.cid===c.id).map(s=>users?.find(x=>x.uid===s.uid)?.dept||'无').join(' ');
-                html+=`<tr><td>${c.name}</td><td>${c.time}</td><td>${c.loc}</td><td>${c.teacher}</td><td>${arr}</td><td>${depts}</td></tr>`;
+                html+=`<tr><td>${c.name}</td><td>${c.time||'待定'}</td><td>${c.loc||'待定'}</td><td>${c.teacher||'待定'}</td><td>${arr}</td><td>${depts}</td></tr>`;
             });
         }
-        document.getElementById('selectList').innerHTML=html||'<tr><td colspan="6">暂无选课</td></tr>';
+        $('selectList').innerHTML=html||'<tr><td colspan="6">暂无选课</td></tr>';
     }
     window.refreshSelect = refreshSelect;
-
     window.exportSelectExcel = function(){
         let rows = [['班级','时间','地点','辅导员','干事','部门']];
         document.querySelectorAll('#selectList tr').forEach(tr => {
@@ -521,8 +508,7 @@ th{background:#f5f7fa;font-size:18px;}
             tr.querySelectorAll('td').forEach(td => row.push(td.innerText));
             if(row.length) rows.push(row);
         });
-        let ws = XLSX.utils.aoa_to_sheet(rows);
-        let wb = XLSX.utils.book_new();
+        let ws = XLSX.utils.aoa_to_sheet(rows), wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, '选课表');
         XLSX.writeFile(wb, '选课表.xlsx');
     };
@@ -536,10 +522,9 @@ th{background:#f5f7fa;font-size:18px;}
         let unselect = students.filter(s=>!selectedUids.includes(s.uid));
         let html='';
         unselect.forEach(s=>{html+=`<tr><td>${s.uid}</td><td>${s.name}</td><td>${s.dept||'无'}</td></tr>`;});
-        document.getElementById('unselectList').innerHTML=html||'<tr><td colspan="3">全部已选课</td></tr>';
+        $('unselectList').innerHTML=html||'<tr><td colspan="3">全部已选课</td></tr>';
     }
     window.refreshUnselect = refreshUnselect;
-
     window.exportUnselectExcel = function(){
         let rows = [['学号','姓名','部门']];
         document.querySelectorAll('#unselectList tr').forEach(tr => {
@@ -547,10 +532,56 @@ th{background:#f5f7fa;font-size:18px;}
             tr.querySelectorAll('td').forEach(td => row.push(td.innerText));
             if(row.length && row[0]!=='全部已选课') rows.push(row);
         });
-        let ws = XLSX.utils.aoa_to_sheet(rows);
-        let wb = XLSX.utils.book_new();
+        let ws = XLSX.utils.aoa_to_sheet(rows), wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, '未选课');
         XLSX.writeFile(wb, '未选课干事.xlsx');
+    };
+
+    // ========== 切换权限管理 ==========
+    async function refreshSwitchPermission(){
+        const {data} = await sb.from('users').select('*').eq('role','teacher').order('uid');
+        let html='';
+        if(data && data.length > 0){
+            data.forEach(t => {
+                let status = t.can_switch ? '✅ 已开启' : '❌ 未开启';
+                let statusClass = t.can_switch ? 'status-on' : 'status-off';
+                let btnText = t.can_switch ? '关闭权限' : '开启权限';
+                let btnClass = t.can_switch ? 'btn-red' : 'btn-green';
+                html += `<tr>
+                    <td><input type="checkbox" class="switchCheck" data-uid="${t.uid}"></td>
+                    <td>${t.uid}</td><td>${t.name}</td><td>${t.dept || '未设置'}</td>
+                    <td class="${statusClass}">${status}</td>
+                    <td><button class="${btnClass}" onclick="toggleSwitchPermission('${t.uid}', ${!t.can_switch})" style="padding:6px 12px;">${btnText}</button></td>
+                </tr>`;
+            });
+        }
+        $('switchPermissionList').innerHTML = html || '<tr><td colspan="6">暂无部长数据</td></tr>';
+    }
+    window.refreshSwitchPermission = refreshSwitchPermission;
+    window.toggleAllSwitch = ()=> document.querySelectorAll('.switchCheck').forEach(i=>i.checked=$('checkAllSwitch').checked);
+    window.toggleSwitchPermission = async function(uid, enable) {
+        if(!confirm(`确定${enable?'开启':'关闭'}该部长的管理员切换权限？`)) return;
+        const { error } = await sb.from('users').update({ can_switch: enable }).eq('uid', uid).eq('role', 'teacher');
+        if(error){ alert('操作失败：' + error.message); }
+        else { refreshSwitchPermission(); alert(`已${enable?'开启':'关闭'}切换权限`); }
+    };
+    window.batchEnableSwitch = async function(){
+        let checks = document.querySelectorAll('.switchCheck:checked');
+        if(!checks.length){ alert('请先选择部长'); return; }
+        if(!confirm(`确定开启选中的 ${checks.length} 个部长的切换权限？`)) return;
+        let uids = Array.from(checks).map(c => c.dataset.uid);
+        const { error } = await sb.from('users').update({ can_switch: true }).in('uid', uids).eq('role', 'teacher');
+        if(error){ alert('操作失败：' + error.message); }
+        else { refreshSwitchPermission(); alert(`已开启 ${checks.length} 个部长的切换权限`); }
+    };
+    window.batchDisableSwitch = async function(){
+        let checks = document.querySelectorAll('.switchCheck:checked');
+        if(!checks.length){ alert('请先选择部长'); return; }
+        if(!confirm(`确定关闭选中的 ${checks.length} 个部长的切换权限？`)) return;
+        let uids = Array.from(checks).map(c => c.dataset.uid);
+        const { error } = await sb.from('users').update({ can_switch: false }).in('uid', uids).eq('role', 'teacher');
+        if(error){ alert('操作失败：' + error.message); }
+        else { refreshSwitchPermission(); alert(`已关闭 ${checks.length} 个部长的切换权限`); }
     };
 
 })();
