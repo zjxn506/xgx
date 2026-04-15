@@ -74,7 +74,7 @@ input{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;}
 <tr>
     <th>班级</th>
     <th>星期</th><th>课次</th><th>课程</th><th>教师</th>
-    <th>人数</th><th>情况</th><th>实到人数</th><th>操作</th>
+    <th>人数</th><th>情况</th><th>实到人数</th><th>出勤率</th><th>操作</th>
 </tr>
 <tbody id="checkCourseList"></tbody>
 </table>
@@ -102,36 +102,19 @@ input{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;}
 
     async function checkSession() {
         if(!u) return;
-        
         try {
-            const { data, error } = await sb
-                .from('users')
-                .select('session_token')
-                .eq('uid', u.uid)
-                .maybeSingle();
-            
+            const { data, error } = await sb.from('users').select('session_token').eq('uid', u.uid).maybeSingle();
             if(error) return;
-            
             if(data && data.session_token && data.session_token !== u.session_token) {
                 clearInterval(checkInterval);
                 sessionStorage.removeItem('user');
-                
                 const kickModal = document.createElement('div');
                 kickModal.style.cssText = 'display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;z-index:10000;';
-                kickModal.innerHTML = `
-                    <div style="width:350px;padding:30px;border-radius:12px;background:#fff;text-align:center;">
-                        <h3 style="color:#f56c6c;margin-bottom:15px;">⚠️ 登录失效</h3>
-                        <p style="margin-bottom:20px;color:#666;">您的账号已在其他地方登录</p>
-                        <button onclick="location.href='login.html'" style="width:120px;padding:10px;background:#409eff;color:#fff;border:none;border-radius:6px;cursor:pointer;">重新登录</button>
-                    </div>
-                `;
+                kickModal.innerHTML = `<div style="width:350px;padding:30px;border-radius:12px;background:#fff;text-align:center;"><h3 style="color:#f56c6c;margin-bottom:15px;">⚠️ 登录失效</h3><p style="margin-bottom:20px;color:#666;">您的账号已在其他地方登录</p><button onclick="location.href='login.html'" style="width:120px;padding:10px;background:#409eff;color:#fff;border:none;border-radius:6px;cursor:pointer;">重新登录</button></div>`;
                 document.body.appendChild(kickModal);
             }
-        } catch(err) {
-            console.error('Session check error:', err);
-        }
+        } catch(err) {}
     }
-
     checkInterval = setInterval(checkSession, 5000);
 
     const now = new Date();
@@ -152,28 +135,17 @@ input{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;}
         if(id==='checkCourse') loadCheckCourses();
     };
 
-    // ========== 刷新当前页面 ==========
     window.refreshCurrentPage = function(){
         const activePage = document.querySelector('.page.active');
-        if(activePage.id === 'page-course'){
-            loadCourses();
-            alert('课程列表已刷新');
-        } else if(activePage.id === 'page-my'){
-            loadMyCourses();
-            alert('我的课程已刷新');
-        } else if(activePage.id === 'page-checkCourse'){
-            loadCheckCourses();
-            alert('查课列表已刷新');
-        } else {
-            alert('当前页面无需刷新');
-        }
+        if(activePage.id === 'page-course'){ loadCourses(); alert('课程列表已刷新'); }
+        else if(activePage.id === 'page-my'){ loadMyCourses(); alert('我的课程已刷新'); }
+        else if(activePage.id === 'page-checkCourse'){ loadCheckCourses(); alert('查课列表已刷新'); }
+        else { alert('当前页面无需刷新'); }
     };
 
     window.logout = async function(){
         clearInterval(checkInterval);
-        if(u){
-            await sb.from('users').update({ session_token: null }).eq('uid', u.uid);
-        }
+        if(u){ await sb.from('users').update({ session_token: null }).eq('uid', u.uid); }
         sessionStorage.removeItem('user');
         location.href='login.html';
     };
@@ -212,7 +184,6 @@ input{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;}
         }
         document.getElementById('courseList').innerHTML=html||'<tr><td colspan="6">暂无课程</td></tr>';
     }
-
     window.loadCourses = loadCourses;
 
     window.selectCourse = async function(cid){
@@ -238,7 +209,6 @@ input{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;}
         }
         document.getElementById('myList').innerHTML=html||'<tr><td colspan="5">未选课</td></tr>';
     }
-
     window.loadMyCourses = loadMyCourses;
 
     window.quitCourse = async function(cid){
@@ -250,15 +220,16 @@ input{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;}
 
     // ========== 查课情况 ==========
     async function loadCheckCourses(){
-        const { data } = await sb.from('check_courses')
-            .select('*')
-            .eq('dept', u.dept)
-            .order('week')
-            .order('lesson');
-        
+        const { data } = await sb.from('check_courses').select('*').eq('dept', u.dept).order('week').order('lesson');
         let html = '';
         if(data && data.length > 0){
             data.forEach(c => {
+                let rate = '';
+                if(c.capacity && c.capacity > 0){
+                    let actual = c.actual !== null ? c.actual : 0;
+                    rate = ((actual / c.capacity) * 100).toFixed(1) + '%';
+                } else { rate = '—'; }
+                
                 html += `<tr>
                     <td>${c.class || '—'}</td>
                     <td>${c.week || ''}</td>
@@ -266,19 +237,14 @@ input{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;}
                     <td>${c.course || ''}</td>
                     <td>${c.teacher || ''}</td>
                     <td>${c.capacity || 0}</td>
-                    <td>
-                        <input type="text" id="situation_${c.id}" value="${c.situation || ''}" placeholder="填写情况" class="check-input" style="width:100px;">
-                    </td>
-                    <td>
-                        <input type="number" id="actual_${c.id}" value="${c.actual !== null ? c.actual : ''}" placeholder="实到" class="check-input" style="width:70px;">
-                    </td>
-                    <td>
-                        <button onclick="saveCheckCourse('${c.id}')">保存</button>
-                    </td>
+                    <td><input type="text" id="situation_${c.id}" value="${c.situation || ''}" placeholder="填写情况" class="check-input" style="width:100px;"></td>
+                    <td><input type="number" id="actual_${c.id}" value="${c.actual !== null ? c.actual : ''}" placeholder="实到" class="check-input" style="width:70px;"></td>
+                    <td id="rate_${c.id}">${rate}</td>
+                    <td><button onclick="saveCheckCourse('${c.id}')">保存</button></td>
                 </tr>`;
             });
         }
-        document.getElementById('checkCourseList').innerHTML = html || '<tr><td colspan="9">暂无查课数据</td></tr>';
+        document.getElementById('checkCourseList').innerHTML = html || '<tr><td colspan="10">暂无查课数据</td></tr>';
     }
     window.loadCheckCourses = loadCheckCourses;
 
@@ -287,16 +253,18 @@ input{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;}
         let actual = parseInt(document.getElementById(`actual_${id}`).value);
         actual = isNaN(actual) ? null : actual;
         
-        const { error } = await sb.from('check_courses')
-            .update({ 
-                situation: situation || null, 
-                actual: actual 
-            })
-            .eq('id', id);
+        const { error } = await sb.from('check_courses').update({ situation: situation || null, actual: actual }).eq('id', id);
         
         if(error){
             alert('保存失败：' + error.message);
         } else {
+            const row = document.getElementById(`situation_${id}`).closest('tr');
+            const capacity = parseInt(row.cells[5].innerText) || 0;
+            if(capacity > 0 && actual !== null){
+                document.getElementById(`rate_${id}`).innerText = ((actual / capacity) * 100).toFixed(1) + '%';
+            } else {
+                document.getElementById(`rate_${id}`).innerText = '—';
+            }
             alert('保存成功');
         }
     };
@@ -306,22 +274,15 @@ input{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;}
         let np = document.getElementById('newPwd').value.trim();
         if(!nu && !np){alert('至少改一项');return;}
         if(np && np.length<6){alert('密码至少6位');return;}
-        
         const updateData = {};
         if(nu) updateData.uid = nu;
         if(np) updateData.pwd = np;
-        
         const { error } = await sb.from('users').update(updateData).eq('uid',u.uid);
         if(error){alert('修改失败：'+error.message);return;}
-        
-        if(nu){
-            await sb.from('selects').update({uid:nu}).eq('uid',u.uid);
-        }
-        
+        if(nu){ await sb.from('selects').update({uid:nu}).eq('uid',u.uid); }
         const updatedUser = {...u};
         if(nu) updatedUser.uid = nu;
         sessionStorage.setItem('user',JSON.stringify(updatedUser));
-        
         alert('修改成功');
         document.getElementById('newUid').value='';
         document.getElementById('newPwd').value='';

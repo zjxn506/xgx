@@ -11,6 +11,7 @@ body{background:#f5f7fa;min-height:100vh;}
 .top-bar .logo{font-size:28px;font-weight:bold;color:#303133;}
 .top-bar .user-info{display:flex;align-items:center;gap:15px;font-size:20px;}
 .top-bar .user-info .avatar{width:50px;height:50px;border-radius:50%;background:#409eff;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.btn-refresh{background:#67C23A;margin-right:15px;padding:8px 16px;}
 .sidebar{width:220px;background:#2b3a55;position:fixed;top:80px;left:0;bottom:0;padding-top:10px;}
 .sidebar .menu-item{color:#bfcbd9;height:60px;line-height:60px;padding:0 20px;cursor:pointer;transition:all 0.3s;border-left:4px solid transparent;font-size:18px;}
 .sidebar .menu-item:hover,.sidebar .menu-item.active{background:#202c3f;color:#fff;border-left-color:#409eff;}
@@ -24,7 +25,6 @@ button{background:#409eff;color:#fff;border:none;cursor:pointer;}
 .btn-red{background:#F56C6C;}
 .btn-green{background:#67C23A;}
 .btn-orange{background:#f5a623;}
-.btn-refresh{background:#67C23A;margin-right:15px;padding:8px 16px;}
 table{width:100%;border-collapse:collapse;margin:20px 0;}
 th,td{border:1px solid #ebeef5;padding:12px;text-align:center;font-size:14px;}
 th{background:#f5f7fa;font-size:16px;}
@@ -60,9 +60,7 @@ th{background:#f5f7fa;font-size:16px;}
 </div>
 
 <div class="main-content">
-<div class="page active" id="page-home">
-    <div class="welcome-card" id="welcomeText">欢迎回来！</div>
-</div>
+<div class="page active" id="page-home"><div class="welcome-card" id="welcomeText">欢迎回来！</div></div>
 
 <div class="page" id="page-student">
 <h2>干事管理 - 部门：<span id="deptName"></span></h2>
@@ -91,15 +89,11 @@ th{background:#f5f7fa;font-size:16px;}
 <button class="btn-red" onclick="exportNoCourseStudents()">📋 导出未选课干事</button>
 </div>
 <table id="selectTable">
-    <tr>
-        <th>班级</th><th>时间</th><th>地点</th><th>辅导员</th>
-        <th>本部门已选干事</th>
-    </tr>
+    <tr><th>班级</th><th>时间</th><th>地点</th><th>辅导员</th><th>本部门已选干事</th></tr>
     <tbody id="selectList"></tbody>
 </table>
 </div>
 
-<!-- 查课管理页面 -->
 <div class="page" id="page-checkCourse">
 <h2>查课管理 - 部门：<span id="deptName3"></span></h2>
 <div class="btn-group">
@@ -110,22 +104,21 @@ th{background:#f5f7fa;font-size:16px;}
     <button class="btn-red" onclick="clearAllCheckCourses()">🧹 清空全部</button>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:15px;">
-    <input id="cclass" placeholder="班级" style="width:10%">
-    <input id="cweek" placeholder="星期" style="width:10%">
-    <input id="clesson" placeholder="课次" style="width:10%">
-    <input id="ccourse" placeholder="课程" style="width:12%">
-    <input id="cteacher2" placeholder="教师" style="width:10%">
-    <input id="ccapacity" placeholder="人数" style="width:8%" type="number">
-    <input id="csituation" placeholder="情况" style="width:10%">
-    <input id="cactual" placeholder="实到人数" style="width:10%" type="number">
-    <button onclick="addCheckCourse()" style="width:8%">提交</button>
+    <input id="cclass" placeholder="班级" style="width:9%">
+    <input id="cweek" placeholder="星期" style="width:9%">
+    <input id="clesson" placeholder="课次" style="width:9%">
+    <input id="ccourse" placeholder="课程" style="width:11%">
+    <input id="cteacher2" placeholder="教师" style="width:9%">
+    <input id="ccapacity" placeholder="人数" style="width:7%" type="number">
+    <input id="csituation" placeholder="情况" style="width:9%">
+    <input id="cactual" placeholder="实到人数" style="width:9%" type="number">
+    <button onclick="addCheckCourse()" style="width:7%">提交</button>
 </div>
 <table>
     <tr>
         <th><input type="checkbox" id="checkAllCheckCourse" onclick="toggleAllCheckCourse()"> 全选</th>
-        <th>班级</th>
-        <th>星期</th><th>课次</th><th>课程</th><th>教师</th>
-        <th>人数</th><th>情况</th><th>实到人数</th><th>操作</th>
+        <th>班级</th><th>星期</th><th>课次</th><th>课程</th><th>教师</th>
+        <th>人数</th><th>情况</th><th>实到人数</th><th>出勤率</th><th>操作</th>
     </tr>
     <tbody id="checkCourseList"></tbody>
 </table>
@@ -146,7 +139,6 @@ th{background:#f5f7fa;font-size:16px;}
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeW9uZmlhcW5pZW5zdmNyZGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjIyNDQsImV4cCI6MjA5MTYzODI0NH0.ZxgkRA8Wp2Zy9ujwkya3apTXHECHvmeilf8qf-3MY78";
 
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
     const t = JSON.parse(sessionStorage.getItem('user'));
     if(!t || t.role !== 'teacher'){alert('请登录');location.href='login.html';}
 
@@ -159,7 +151,6 @@ th{background:#f5f7fa;font-size:16px;}
     document.getElementById('deptName2').innerText = t.dept || '未设置';
     document.getElementById('deptName3').innerText = t.dept || '未设置';
 
-    // 单点登录检测
     let checkInterval = setInterval(async () => {
         try {
             const { data } = await sb.from('users').select('session_token').eq('uid', t.uid).maybeSingle();
@@ -189,21 +180,12 @@ th{background:#f5f7fa;font-size:16px;}
         if(pageId==='checkCourse') refreshCheckCourse();
     };
 
-    // ========== 刷新当前页面 ==========
     window.refreshCurrentPage = function(){
         const activePage = document.querySelector('.page.active');
-        if(activePage.id === 'page-student'){
-            refreshStudent();
-            alert('干事列表已刷新');
-        } else if(activePage.id === 'page-select'){
-            refreshSelect();
-            alert('选课列表已刷新');
-        } else if(activePage.id === 'page-checkCourse'){
-            refreshCheckCourse();
-            alert('查课列表已刷新');
-        } else {
-            alert('当前页面无需刷新');
-        }
+        if(activePage.id === 'page-student'){ refreshStudent(); alert('干事列表已刷新'); }
+        else if(activePage.id === 'page-select'){ refreshSelect(); alert('选课列表已刷新'); }
+        else if(activePage.id === 'page-checkCourse'){ refreshCheckCourse(); alert('查课列表已刷新'); }
+        else { alert('当前页面无需刷新'); }
     };
 
     window.logout = async function(){
@@ -233,9 +215,7 @@ th{background:#f5f7fa;font-size:16px;}
         $('studentList').innerHTML=html||'<tr><td colspan="6">暂无干事</td></tr>';
     }
     window.refreshStudent = refreshStudent;
-
     window.toggleAll = ()=> document.querySelectorAll('.studentCheck').forEach(cb=>cb.checked=$('checkAll').checked);
-
     window.batchResetPwd = async ()=>{
         let checks = document.querySelectorAll('.studentCheck:checked');
         if(!checks.length){alert('请选择');return;}
@@ -243,7 +223,6 @@ th{background:#f5f7fa;font-size:16px;}
         await sb.from('users').update({pwd:'111111'}).in('uid', Array.from(checks).map(cb=>cb.dataset.uid));
         refreshStudent(); alert('重置成功');
     };
-
     window.batchDeleteStudent = async ()=>{
         let checks = document.querySelectorAll('.studentCheck:checked');
         if(!checks.length){alert('请选择');return;}
@@ -251,7 +230,6 @@ th{background:#f5f7fa;font-size:16px;}
         await sb.from('users').delete().in('uid', Array.from(checks).map(cb=>cb.dataset.uid));
         refreshStudent(); alert('删除成功');
     };
-
     window.addStudent = async ()=>{
         let uid=$('suid').value.trim(), name=$('sname').value.trim(), pwd=$('spwd').value.trim();
         if(!uid||!name||!pwd){alert('请填写完整');return;}
@@ -259,14 +237,11 @@ th{background:#f5f7fa;font-size:16px;}
         $('suid').value=$('sname').value=$('spwd').value='';
         refreshStudent();
     };
-
     window.editStudent = async uid=>{
         const {data} = await sb.from('users').select('*').eq('uid',uid).maybeSingle();
         if(data){ $('suid').value=data.uid; $('sname').value=data.name; $('spwd').value=data.pwd; }
     };
-
     window.delStudent = async uid=>{ if(confirm('确定删除？')){ await sb.from('users').delete().eq('uid',uid); refreshStudent(); } };
-
     window.importStudentExcel = async ()=>{
         let f=$('studentExcel').files[0]; if(!f){alert('请选择文件');return;}
         let r=new FileReader();
@@ -293,92 +268,51 @@ th{background:#f5f7fa;font-size:16px;}
         const { data: selects } = await sb.from('selects').select('*');
         const myStudents = await getMyStudents();
         const myStuIds = myStudents.map(s => s.uid);
-        
         let html = '';
-        
         if(courses && courses.length > 0){
             courses.forEach(c => {
                 let myDeptSelects = (selects || []).filter(s => s.cid === c.id && myStuIds.includes(s.uid));
-                
                 if(myDeptSelects.length > 0){
                     let selectedNames = myDeptSelects.map(s => s.name).join('、');
-                    
-                    html += `<tr>
-                        <td>${c.name}</td>
-                        <td>${c.time || '待定'}</td>
-                        <td>${c.loc || '待定'}</td>
-                        <td>${c.teacher || '待定'}</td>
-                        <td style="text-align:left;padding-left:15px;">${selectedNames}</td>
-                    </tr>`;
+                    html += `<tr><td>${c.name}</td><td>${c.time || '待定'}</td><td>${c.loc || '待定'}</td><td>${c.teacher || '待定'}</td><td style="text-align:left;padding-left:15px;">${selectedNames}</td></tr>`;
                 }
             });
         }
-        
         $('selectList').innerHTML = html || '<tr><td colspan="5" style="text-align:center;padding:20px;">暂无本部门干事的选课记录</td></tr>';
     }
     window.refreshSelect = refreshSelect;
-
     window.exportNoCourseStudents = async function(){
         const myStudents = await getMyStudents();
         const { data: selects } = await sb.from('selects').select('*');
-        
-        let noCourseStudents = myStudents.filter(s => {
-            let studentSelects = (selects || []).filter(sel => sel.uid === s.uid);
-            return studentSelects.length === 0;
-        });
-        
-        if(noCourseStudents.length === 0){
-            alert('🎉 所有干事都已选课！');
-            return;
-        }
-        
+        let noCourseStudents = myStudents.filter(s => { return (selects || []).filter(sel => sel.uid === s.uid).length === 0; });
+        if(noCourseStudents.length === 0){ alert('🎉 所有干事都已选课！'); return; }
         let rows = [['学号', '姓名', '部门']];
         noCourseStudents.forEach(s => rows.push([s.uid, s.name, s.dept || '']));
-        
-        let ws = XLSX.utils.aoa_to_sheet(rows);
-        let wb = XLSX.utils.book_new();
+        let ws = XLSX.utils.aoa_to_sheet(rows), wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, '未选课干事');
         XLSX.writeFile(wb, `未选课干事_${t.dept}.xlsx`);
-        
         alert(`✅ 导出成功！共 ${noCourseStudents.length} 名干事未选任何课程`);
     };
-
     window.showNoCourseStudents = async function(){
         const myStudents = await getMyStudents();
         const { data: selects } = await sb.from('selects').select('*');
-        
-        let noCourseStudents = myStudents.filter(s => {
-            let studentSelects = (selects || []).filter(sel => sel.uid === s.uid);
-            return studentSelects.length === 0;
-        });
-        
-        if(noCourseStudents.length === 0){
-            alert('🎉 所有干事都已选课！');
-        } else {
-            let list = noCourseStudents.map(s => `${s.name}（${s.uid}）`).join('\n');
-            alert(`📋 未选任何课程的干事（${noCourseStudents.length}人）：\n\n${list}`);
-        }
+        let noCourseStudents = myStudents.filter(s => { return (selects || []).filter(sel => sel.uid === s.uid).length === 0; });
+        if(noCourseStudents.length === 0){ alert('🎉 所有干事都已选课！'); }
+        else { alert(`📋 未选任何课程的干事（${noCourseStudents.length}人）：\n\n${noCourseStudents.map(s => `${s.name}（${s.uid}）`).join('\n')}`); }
     };
-
     window.exportSelectExcel = async function(){
         const myStudents = await getMyStudents();
         const myStuIds = myStudents.map(s => s.uid);
         const { data: courses } = await sb.from('courses').select('*');
         const { data: selects } = await sb.from('selects').select('*');
-        
         let arr = [['班级', '时间', '地点', '辅导员', '本部门已选干事']];
         if(courses){
             courses.forEach(c => {
                 let myDeptSelects = (selects || []).filter(s => s.cid === c.id && myStuIds.includes(s.uid));
-                if(myDeptSelects.length > 0){
-                    let selectedNames = myDeptSelects.map(s => s.name).join('、');
-                    arr.push([c.name, c.time||'', c.loc||'', c.teacher||'', selectedNames]);
-                }
+                if(myDeptSelects.length > 0){ arr.push([c.name, c.time||'', c.loc||'', c.teacher||'', myDeptSelects.map(s => s.name).join('、')]); }
             });
         }
-        
-        let ws = XLSX.utils.aoa_to_sheet(arr);
-        let wb = XLSX.utils.book_new();
+        let ws = XLSX.utils.aoa_to_sheet(arr), wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, '选课统计');
         XLSX.writeFile(wb, `选课统计_${t.dept}.xlsx`);
     };
@@ -389,212 +323,117 @@ th{background:#f5f7fa;font-size:16px;}
         let html = '';
         if(data && data.length > 0){
             data.forEach(c => {
+                let rate = '';
+                if(c.capacity && c.capacity > 0){
+                    let actual = c.actual !== null ? c.actual : 0;
+                    rate = ((actual / c.capacity) * 100).toFixed(1) + '%';
+                } else { rate = '—'; }
+                
                 html += `<tr>
                     <td><input type="checkbox" class="checkCourseCheck" data-id="${c.id}"></td>
-                    <td>${c.class || '—'}</td>
-                    <td>${c.week || ''}</td>
-                    <td>${c.lesson || ''}</td>
-                    <td>${c.course || ''}</td>
-                    <td>${c.teacher || ''}</td>
-                    <td>${c.capacity || 0}</td>
-                    <td>${c.situation || '—'}</td>
-                    <td>${c.actual !== null ? c.actual : '—'}</td>
-                    <td>
-                        <button onclick="editCheckCourse('${c.id}')">修改</button>
-                        <button class="btn-red" onclick="delCheckCourse('${c.id}')">删除</button>
-                    </td>
+                    <td>${c.class || '—'}</td><td>${c.week || ''}</td><td>${c.lesson || ''}</td>
+                    <td>${c.course || ''}</td><td>${c.teacher || ''}</td><td>${c.capacity || 0}</td>
+                    <td>${c.situation || '—'}</td><td>${c.actual !== null ? c.actual : '—'}</td><td>${rate}</td>
+                    <td><button onclick="editCheckCourse('${c.id}')">修改</button><button class="btn-red" onclick="delCheckCourse('${c.id}')">删除</button></td>
                 </tr>`;
             });
         }
-        $('checkCourseList').innerHTML = html || '<tr><td colspan="10">暂无查课数据</td></tr>';
+        $('checkCourseList').innerHTML = html || '<tr><td colspan="11">暂无查课数据</td></tr>';
     }
     window.refreshCheckCourse = refreshCheckCourse;
-
-    window.toggleAllCheckCourse = function(){
-        let c = $('checkAllCheckCourse').checked;
-        document.querySelectorAll('.checkCourseCheck').forEach(i => i.checked = c);
-    };
-
+    window.toggleAllCheckCourse = function(){ let c = $('checkAllCheckCourse').checked; document.querySelectorAll('.checkCourseCheck').forEach(i => i.checked = c); };
     window.batchDelCheckCourse = async function(){
         let checks = document.querySelectorAll('.checkCourseCheck:checked');
         if(!checks.length){ alert('请先选择要删除的记录'); return; }
         if(!confirm(`确定删除选中的 ${checks.length} 条记录？`)) return;
-        let ids = Array.from(checks).map(c => c.dataset.id);
-        await sb.from('check_courses').delete().in('id', ids);
-        refreshCheckCourse();
-        alert(`✅ 成功删除 ${checks.length} 条记录`);
+        await sb.from('check_courses').delete().in('id', Array.from(checks).map(c => c.dataset.id));
+        refreshCheckCourse(); alert(`✅ 成功删除 ${checks.length} 条记录`);
     };
-
     window.clearAllCheckCourses = async function(){
         if(!confirm('确定清空本部门所有查课记录？')) return;
         await sb.from('check_courses').delete().eq('dept', t.dept);
-        refreshCheckCourse();
-        alert('清空成功');
+        refreshCheckCourse(); alert('清空成功');
     };
-
     window.addCheckCourse = async function(){
-        let classVal = $('cclass').value.trim();
-        let week = $('cweek').value.trim();
-        let lesson = $('clesson').value.trim();
-        let course = $('ccourse').value.trim();
-        let teacher = $('cteacher2').value.trim();
-        let capacity = parseInt($('ccapacity').value) || 0;
-        let situation = $('csituation').value.trim();
-        let actual = parseInt($('cactual').value);
+        let classVal = $('cclass').value.trim(), week = $('cweek').value.trim(), lesson = $('clesson').value.trim();
+        let course = $('ccourse').value.trim(), teacher = $('cteacher2').value.trim(), capacity = parseInt($('ccapacity').value) || 0;
+        let situation = $('csituation').value.trim(), actual = parseInt($('cactual').value);
         actual = isNaN(actual) ? null : actual;
-        
-        if(!week || !lesson || !course || !teacher || !capacity){
-            alert('请填写完整（星期、课次、课程、教师、人数）');
-            return;
-        }
-        
+        if(!week || !lesson || !course || !teacher || !capacity){ alert('请填写完整（星期、课次、课程、教师、人数）'); return; }
         let id = 'check_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-        
-        await sb.from('check_courses').insert([{
-            id, class: classVal || null, week, lesson, course, teacher, capacity,
-            situation: situation || null,
-            actual: actual,
-            dept: t.dept
-        }]);
-        
+        await sb.from('check_courses').insert([{ id, class: classVal || null, week, lesson, course, teacher, capacity, situation: situation || null, actual, dept: t.dept }]);
         $('cclass').value = $('cweek').value = $('clesson').value = $('ccourse').value = $('cteacher2').value = '';
         $('ccapacity').value = $('csituation').value = $('cactual').value = '';
-        
-        refreshCheckCourse();
-        alert('添加成功');
+        refreshCheckCourse(); alert('添加成功');
     };
-
     window.editCheckCourse = async function(id){
         const { data } = await sb.from('check_courses').select('*').eq('id', id).maybeSingle();
         if(data){
-            $('cclass').value = data.class || '';
-            $('cweek').value = data.week || '';
-            $('clesson').value = data.lesson || '';
-            $('ccourse').value = data.course || '';
-            $('cteacher2').value = data.teacher || '';
-            $('ccapacity').value = data.capacity || '';
-            $('csituation').value = data.situation || '';
-            $('cactual').value = data.actual !== null ? data.actual : '';
+            $('cclass').value = data.class || ''; $('cweek').value = data.week || ''; $('clesson').value = data.lesson || '';
+            $('ccourse').value = data.course || ''; $('cteacher2').value = data.teacher || ''; $('ccapacity').value = data.capacity || '';
+            $('csituation').value = data.situation || ''; $('cactual').value = data.actual !== null ? data.actual : '';
             window.currentEditCheckId = id;
         }
     };
-
-    window.delCheckCourse = async function(id){
-        if(!confirm('确定删除？')) return;
-        await sb.from('check_courses').delete().eq('id', id);
-        refreshCheckCourse();
-    };
-
+    window.delCheckCourse = async function(id){ if(confirm('确定删除？')){ await sb.from('check_courses').delete().eq('id', id); refreshCheckCourse(); } };
     window.importCheckCourseExcel = async function(){
-        let f = $('checkCourseExcel').files[0];
-        if(!f){ alert('请选择文件'); return; }
-        
+        let f = $('checkCourseExcel').files[0]; if(!f){ alert('请选择文件'); return; }
         let r = new FileReader();
         r.onload = async e => {
             try {
                 let wb = XLSX.read(e.target.result, { type: 'binary' });
                 let data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-                
                 let valid = [];
                 for(let row of data){
-                    let classVal = row['班级'] || row['class'] || '';
-                    let week = row['星期'] || row['week'] || '';
-                    let lesson = row['课次'] || row['lesson'] || '';
-                    let course = row['课程'] || row['course'] || '';
-                    let teacher = row['教师'] || row['teacher'] || '';
-                    let capacity = parseInt(row['人数'] || row['capacity']) || 0;
-                    
+                    let classVal = row['班级'] || row['class'] || '', week = row['星期'] || row['week'] || '';
+                    let lesson = row['课次'] || row['lesson'] || '', course = row['课程'] || row['course'] || '';
+                    let teacher = row['教师'] || row['teacher'] || '', capacity = parseInt(row['人数'] || row['capacity']) || 0;
                     if(week && lesson && course && teacher && capacity){
-                        valid.push({
-                            id: 'check_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
-                            class: classVal || null,
-                            week: String(week), lesson: String(lesson), course: String(course),
-                            teacher: String(teacher), capacity: capacity,
-                            situation: row['情况'] || row['situation'] || null,
-                            actual: parseInt(row['实到人数'] || row['actual']) || null,
-                            dept: t.dept
-                        });
+                        valid.push({ id: 'check_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6), class: classVal || null,
+                            week: String(week), lesson: String(lesson), course: String(course), teacher: String(teacher), capacity: capacity,
+                            situation: row['情况'] || row['situation'] || null, actual: parseInt(row['实到人数'] || row['actual']) || null, dept: t.dept });
                     }
                 }
-                
                 if(valid.length === 0){ alert('没有有效数据'); return; }
-                
                 let success = 0;
-                for(let item of valid){
-                    const { error } = await sb.from('check_courses').insert([item]);
-                    if(!error) success++;
-                }
-                
-                refreshCheckCourse();
-                alert('✅ 导入成功！共 ' + success + ' 条');
-                $('checkCourseExcel').value = '';
-            } catch(err) {
-                alert('导入失败：' + err.message);
-            }
+                for(let item of valid){ const { error } = await sb.from('check_courses').insert([item]); if(!error) success++; }
+                refreshCheckCourse(); alert('✅ 导入成功！共 ' + success + ' 条'); $('checkCourseExcel').value = '';
+            } catch(err) { alert('导入失败：' + err.message); }
         };
         r.readAsBinaryString(f);
     };
-
     window.exportCheckCourseExcel = async function(){
-        const { data } = await sb.from('check_courses')
-            .select('*')
-            .eq('dept', t.dept)
-            .order('week')
-            .order('lesson');
-        
-        if(!data || data.length === 0){
-            alert('暂无数据可导出');
-            return;
-        }
-        
-        let rows = [['班级', '星期', '课次', '课程', '教师', '人数', '情况', '实到人数']];
-        
+        const { data } = await sb.from('check_courses').select('*').eq('dept', t.dept).order('week').order('lesson');
+        if(!data || data.length === 0){ alert('暂无数据可导出'); return; }
+        let rows = [['班级', '星期', '课次', '课程', '教师', '人数', '情况', '实到人数', '出勤率']];
         data.forEach(c => {
-            rows.push([
-                c.class || '',
-                c.week || '',
-                c.lesson || '',
-                c.course || '',
-                c.teacher || '',
-                c.capacity || 0,
-                c.situation || '未填写',
-                c.actual !== null ? c.actual : '未填写'
-            ]);
+            let rate = '';
+            if(c.capacity && c.capacity > 0){ rate = (( (c.actual !== null ? c.actual : 0) / c.capacity) * 100).toFixed(1) + '%'; }
+            else { rate = '—'; }
+            rows.push([ c.class || '', c.week || '', c.lesson || '', c.course || '', c.teacher || '', c.capacity || 0, c.situation || '未填写', c.actual !== null ? c.actual : '未填写', rate ]);
         });
-        
         let totalCapacity = data.reduce((sum, c) => sum + (c.capacity || 0), 0);
         let totalActual = data.reduce((sum, c) => sum + (c.actual || 0), 0);
-        let fillRate = totalCapacity > 0 ? ((totalActual / totalCapacity) * 100).toFixed(1) : 0;
-        
-        rows.push([]);
-        rows.push(['统计', '', '', '', '', `总人数: ${totalCapacity}`, '', `总实到: ${totalActual}`, `出勤率: ${fillRate}%`]);
-        
-        let ws = XLSX.utils.aoa_to_sheet(rows);
-        let wb = XLSX.utils.book_new();
+        let totalRate = totalCapacity > 0 ? ((totalActual / totalCapacity) * 100).toFixed(1) + '%' : '—';
+        rows.push([]); rows.push(['统计', '', '', '', '', `总人数: ${totalCapacity}`, '', `总实到: ${totalActual}`, totalRate]);
+        let ws = XLSX.utils.aoa_to_sheet(rows), wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, '查课数据');
-        
-        let date = new Date();
-        let dateStr = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')}`;
+        let date = new Date(), dateStr = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')}`;
         XLSX.writeFile(wb, `查课数据_${t.dept}_${dateStr}.xlsx`);
-        
         alert(`✅ 导出成功！共 ${data.length} 条记录`);
     };
 
     // ========== 修改账户 ==========
     window.saveProfile = async function(){
-        let newUid = $('newUid').value.trim();
-        let newPwd = $('newPwd').value.trim();
+        let newUid = $('newUid').value.trim(), newPwd = $('newPwd').value.trim();
         if(!newUid && !newPwd){alert('至少修改一项');return;}
-        let finalUid = newUid || t.uid;
-        let finalPwd = newPwd || t.pwd;
+        let finalUid = newUid || t.uid, finalPwd = newPwd || t.pwd;
         await sb.from('users').update({ uid: finalUid, pwd: finalPwd }).eq('uid', t.uid).eq('role', 'teacher');
         await sb.from('selects').update({ uid: finalUid }).eq('uid', t.uid);
         sessionStorage.setItem('user', JSON.stringify({...t, uid: finalUid}));
-        $('oldUid').innerText = finalUid;
-        alert('修改成功！');
+        $('oldUid').innerText = finalUid; alert('修改成功！');
         $('newUid').value=''; $('newPwd').value='';
     };
-
 })();
 </script>
 </body>
