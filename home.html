@@ -34,39 +34,14 @@ input,select{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;fo
 .time-tip{color:red;font-size:12px;}
 .check-input{width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;}
 h3{color:#303133;margin-bottom:15px;}
-/* 晚讲评填写表单样式 */
-.evening-form-container{
-    background:rgba(255,255,255,0.95);
-    border-radius:8px;
-    padding:15px;
-    margin-top:20px;
-    border:1px solid #e4e7ed;
-}
-.evening-form-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:15px;
-}
+.evening-form-container{background:rgba(255,255,255,0.95);border-radius:8px;padding:15px;margin-top:20px;border:1px solid #e4e7ed;}
+.evening-form-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;}
 .evening-form-header h4{margin:0;color:#303133;}
-.form-row{
-    display:flex;
-    flex-wrap:wrap;
-    gap:8px;
-    margin-bottom:10px;
-}
+.form-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
 .form-row select{width:12%;}
 .form-row input{width:10%;}
-.submit-btn{
-    background:#67C23A;
-    padding:8px 20px;
-    font-size:14px;
-}
-.refresh-btn{
-    background:#409eff;
-    padding:8px 20px;
-    font-size:14px;
-}
+.submit-btn{background:#67C23A;padding:8px 20px;font-size:14px;}
+.refresh-btn{background:#409eff;padding:8px 20px;font-size:14px;}
 </style>
 </head>
 <body>
@@ -121,7 +96,6 @@ h3{color:#303133;margin-bottom:15px;}
 </div>
 <div class="page" id="page-eveningReview">
 <h3>晚讲评检查记录</h3>
-<!-- 数据表格区域 -->
 <table>
     <tr>
         <th>辅导员</th><th>教室</th><th>时长</th><th>分钟</th><th>班级</th>
@@ -129,8 +103,6 @@ h3{color:#303133;margin-bottom:15px;}
     </tr>
     <tbody id="eveningReviewList"></tbody>
 </table>
-
-<!-- 填写表单区域 -->
 <div class="evening-form-container">
     <div class="evening-form-header">
         <h4>📝 填写晚讲评检查</h4>
@@ -420,7 +392,6 @@ h3{color:#303133;margin-bottom:15px;}
         
         if(error){ alert('提交失败：' + error.message); return; }
         
-        // 清空表单
         $('counselor').value = '';
         $('classroom').value = '';
         $('duration').value = '';
@@ -457,23 +428,43 @@ h3{color:#303133;margin-bottom:15px;}
         refreshEveningReview();
     };
 
+    // ========== 修改账户（修复版） ==========
     window.updateAccount = async function(){
         let nu = document.getElementById('newUid').value.trim();
         let np = document.getElementById('newPwd').value.trim();
         if(!nu && !np){alert('至少改一项');return;}
         if(np && np.length<6){alert('密码至少6位');return;}
         
+        // 如果修改了学号，先检查新学号是否已被占用
+        if(nu){
+            const { data: existing } = await sb.from('users')
+                .select('uid')
+                .eq('uid', nu)
+                .maybeSingle();
+            
+            if(existing && existing.uid !== u.uid){
+                alert('该学号已被使用，请换一个');
+                return;
+            }
+        }
+        
         const updateData = {};
         if(nu) updateData.uid = nu;
         if(np) updateData.pwd = np;
         
-        const { error } = await sb.from('users').update(updateData).eq('uid', u.uid);
+        // 更新 users 表（WHERE uid = 旧学号）
+        const { error } = await sb.from('users')
+            .update(updateData)
+            .eq('uid', u.uid);
+        
         if(error){alert('修改失败：'+error.message);return;}
         
+        // 同步更新 selects 表
         if(nu){ 
             await sb.from('selects').update({uid: nu}).eq('uid', u.uid); 
         }
         
+        // 更新 session 中的用户信息
         const updatedUser = {...u};
         if(nu) updatedUser.uid = nu;
         sessionStorage.setItem('user', JSON.stringify(updatedUser));
@@ -482,6 +473,7 @@ h3{color:#303133;margin-bottom:15px;}
         document.getElementById('newUid').value='';
         document.getElementById('newPwd').value='';
         
+        // 如果学号改变了，刷新页面
         if(nu){
             location.reload();
         }
