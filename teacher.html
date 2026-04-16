@@ -40,6 +40,7 @@ th{background:#f5f7fa;font-size:16px;}
 .unselect-btn{background:#f5a623;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:14px;margin-left:10px;}
 .btn-group{display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap;}
 .btn-group button{margin:0;}
+select{padding:8px;border-radius:6px;border:1px solid #ddd;}
 </style>
 </head>
 <body>
@@ -62,6 +63,7 @@ th{background:#f5f7fa;font-size:16px;}
 <div class="menu-item" onclick="showPage('student')">干事管理</div>
 <div class="menu-item" onclick="showPage('select')">查看选课</div>
 <div class="menu-item" onclick="showPage('checkCourse')">查课管理</div>
+<div class="menu-item" id="menuEveningReview" onclick="showPage('eveningReview')" style="display:none;">晚讲评查看</div>
 <div class="menu-item" onclick="showPage('profile')">修改账户</div>
 <div class="menu-item" onclick="logout()">退出登录</div>
 <div class="menu-item menu-item-danger" onclick="deleteTeacherAccount()">注销账号</div>
@@ -132,6 +134,42 @@ th{background:#f5f7fa;font-size:16px;}
 </table>
 </div>
 
+<div class="page" id="page-eveningReview">
+<h2>晚讲评检查记录</h2>
+<div class="btn-group">
+    <button class="btn-green" onclick="exportEveningReviewExcel()">📊 导出全部数据</button>
+    <button class="btn-refresh" onclick="refreshEveningReview()" style="background:#67C23A;">🔄 刷新</button>
+</div>
+<div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+    <select id="filterCounselor" onchange="filterEveningReview()">
+        <option value="">全部辅导员</option>
+        <option value="王津隆">王津隆</option>
+        <option value="张珂">张珂</option>
+        <option value="吴天宇">吴天宇</option>
+        <option value="梁旭">梁旭</option>
+        <option value="夏辰雪">夏辰雪</option>
+        <option value="毛文秀">毛文秀</option>
+        <option value="郝传策">郝传策</option>
+        <option value="陈晓靖">陈晓靖</option>
+        <option value="王云玲">王云玲</option>
+        <option value="吴兆龙">吴兆龙</option>
+        <option value="许旭">许旭</option>
+    </select>
+    <select id="filterReporter" onchange="filterEveningReview()">
+        <option value="">全部填表人</option>
+    </select>
+    <input type="date" id="filterDate" onchange="filterEveningReview()">
+    <button onclick="clearFilter()">清除筛选</button>
+</div>
+<table>
+    <tr>
+        <th>辅导员</th><th>教室</th><th>时长</th><th>分钟</th><th>班级</th>
+        <th>应到</th><th>实到</th><th>纪律</th><th>内容</th><th>填表人</th><th>时间</th>
+    </tr>
+    <tbody id="eveningReviewList"></tbody>
+</table>
+</div>
+
 <div class="page" id="page-profile">
 <h2>修改账户</h2>
 <div class="form-item"><label>当前工号：</label><span id="oldUid" style="font-weight:bold;color:#333;"></span></div>
@@ -186,6 +224,7 @@ th{background:#f5f7fa;font-size:16px;}
         if(pageId==='select') refreshSelect();
         if(pageId==='student') refreshStudent();
         if(pageId==='checkCourse') refreshCheckCourse();
+        if(pageId==='eveningReview') refreshEveningReview();
     };
 
     window.refreshCurrentPage = function(){
@@ -193,6 +232,7 @@ th{background:#f5f7fa;font-size:16px;}
         if(activePage.id === 'page-student'){ refreshStudent(); alert('干事列表已刷新'); }
         else if(activePage.id === 'page-select'){ refreshSelect(); alert('选课列表已刷新'); }
         else if(activePage.id === 'page-checkCourse'){ refreshCheckCourse(); alert('查课列表已刷新'); }
+        else if(activePage.id === 'page-eveningReview'){ refreshEveningReview(); alert('晚讲评列表已刷新'); }
         else { alert('当前页面无需刷新'); }
     };
 
@@ -225,6 +265,14 @@ th{background:#f5f7fa;font-size:16px;}
         }
     }
 
+    // ========== 晚讲评查看权限 ==========
+    async function checkEveningPermission() {
+        const { data } = await sb.from('users').select('can_view_evening').eq('uid', t.uid).maybeSingle();
+        if(data && data.can_view_evening) {
+            document.getElementById('menuEveningReview').style.display = 'block';
+        }
+    }
+
     window.switchToAdmin = async function() {
         if(!confirm('确定切换到管理员模式？')) return;
         const { data: adminUser } = await sb.from('users').select('*').eq('uid', 'admin').eq('role', 'admin').maybeSingle();
@@ -252,6 +300,7 @@ th{background:#f5f7fa;font-size:16px;}
     };
 
     setTimeout(checkSwitchPermission, 500);
+    setTimeout(checkEveningPermission, 500);
 
     // ========== 干事管理 ==========
     async function refreshStudent(){
@@ -488,6 +537,117 @@ th{background:#f5f7fa;font-size:16px;}
         XLSX.utils.book_append_sheet(wb, ws, '查课数据');
         let date = new Date(), dateStr = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')}`;
         XLSX.writeFile(wb, `查课数据_${t.dept}_${dateStr}.xlsx`);
+        alert(`✅ 导出成功！共 ${data.length} 条记录`);
+    };
+
+    // ========== 晚讲评查看 ==========
+    let allEveningData = [];
+
+    async function refreshEveningReview(){
+        const { data } = await sb.from('evening_reviews')
+            .select('*')
+            .order('created_at', { ascending: false });
+        
+        allEveningData = data || [];
+        
+        let reporters = [...new Set(allEveningData.map(r => r.reporter))];
+        let reporterHtml = '<option value="">全部填表人</option>';
+        reporters.forEach(r => { reporterHtml += `<option value="${r}">${r}</option>`; });
+        $('filterReporter').innerHTML = reporterHtml;
+        
+        renderEveningTable(allEveningData);
+    }
+    window.refreshEveningReview = refreshEveningReview;
+
+    function renderEveningTable(data){
+        let html = '';
+        if(data && data.length > 0){
+            data.forEach(r => {
+                let createdAt = r.created_at ? new Date(r.created_at).toLocaleString('zh-CN') : '';
+                let discipline = r.discipline || '—';
+                let content = r.content || '—';
+                if(discipline.length > 10) discipline = discipline.substring(0, 10) + '...';
+                if(content.length > 15) content = content.substring(0, 15) + '...';
+                
+                html += `<tr>
+                    <td>${r.counselor || ''}</td>
+                    <td>${r.classroom || ''}</td>
+                    <td>${r.duration || ''}</td>
+                    <td>${r.total_minutes || 0}</td>
+                    <td>${r.class_name || ''}</td>
+                    <td>${r.should_attend || 0}</td>
+                    <td>${r.actual_attend || 0}</td>
+                    <td title="${r.discipline || ''}">${discipline}</td>
+                    <td title="${r.content || ''}">${content}</td>
+                    <td>${r.reporter || ''}</td>
+                    <td>${createdAt}</td>
+                </tr>`;
+            });
+        }
+        $('eveningReviewList').innerHTML = html || '<tr><td colspan="11">暂无晚讲评记录</td></tr>';
+    }
+
+    window.filterEveningReview = function(){
+        let counselor = $('filterCounselor').value;
+        let reporter = $('filterReporter').value;
+        let date = $('filterDate').value;
+        
+        let filtered = allEveningData.filter(r => {
+            if(counselor && r.counselor !== counselor) return false;
+            if(reporter && r.reporter !== reporter) return false;
+            if(date){
+                let rDate = r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : '';
+                if(rDate !== date) return false;
+            }
+            return true;
+        });
+        
+        renderEveningTable(filtered);
+    };
+
+    window.clearFilter = function(){
+        $('filterCounselor').value = '';
+        $('filterReporter').value = '';
+        $('filterDate').value = '';
+        renderEveningTable(allEveningData);
+    };
+
+    window.exportEveningReviewExcel = function(){
+        let counselor = $('filterCounselor').value;
+        let reporter = $('filterReporter').value;
+        let date = $('filterDate').value;
+        
+        let data = allEveningData.filter(r => {
+            if(counselor && r.counselor !== counselor) return false;
+            if(reporter && r.reporter !== reporter) return false;
+            if(date){
+                let rDate = r.created_at ? new Date(r.created_at).toISOString().split('T')[0] : '';
+                if(rDate !== date) return false;
+            }
+            return true;
+        });
+        
+        if(data.length === 0){ alert('暂无数据可导出'); return; }
+        
+        let rows = [['辅导员', '教室', '时长', '总分钟', '班级', '应到', '实到', '纪律情况', '内容', '填表人', '所在系', '提交时间']];
+        
+        data.forEach(r => {
+            rows.push([
+                r.counselor || '', r.classroom || '', r.duration || '', r.total_minutes || 0,
+                r.class_name || '', r.should_attend || 0, r.actual_attend || 0,
+                r.discipline || '', r.content || '', r.reporter || '',
+                r.department || '信息管理与工程系团总支学生会',
+                r.created_at ? new Date(r.created_at).toLocaleString('zh-CN') : ''
+            ]);
+        });
+        
+        let ws = XLSX.utils.aoa_to_sheet(rows);
+        let wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '晚讲评记录');
+        
+        let dateStr = new Date().toISOString().split('T')[0];
+        XLSX.writeFile(wb, `晚讲评记录_${dateStr}.xlsx`);
+        
         alert(`✅ 导出成功！共 ${data.length} 条记录`);
     };
 

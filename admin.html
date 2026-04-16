@@ -32,8 +32,8 @@ button{background:#409eff;color:#fff;border:none;cursor:pointer;}
 .btn-green{background:#67C23A;}
 .btn-orange{background:#f5a623;}
 table{width:100%;border-collapse:collapse;margin:20px 0;background:rgba(255,255,255,0.95);}
-th,td{border:1px solid #ebeef5;padding:15px;text-align:center;font-size:16px;}
-th{background:#f5f7fa;font-size:18px;}
+th,td{border:1px solid #ebeef5;padding:12px;text-align:center;font-size:14px;}
+th{background:#f5f7fa;font-size:16px;}
 .excel-box{margin:10px 0;}
 .form-item{margin:15px 0;}
 .form-item label{display:inline-block;width:100px;font-size:16px;}
@@ -148,9 +148,11 @@ th{background:#f5f7fa;font-size:18px;}
 <div class="page" id="page-switchPermission">
 <h2>切换权限管理</h2>
 <div class="btn-group">
-    <button class="btn-green" onclick="batchEnableSwitch()">✅ 批量开启</button>
-    <button class="btn-red" onclick="batchDisableSwitch()">❌ 批量关闭</button>
-    <button class="btn-refresh" onclick="refreshSwitchPermission()" style="background:#67C23A;">🔄 刷新列表</button>
+    <button class="btn-green" onclick="batchEnableSwitch()">✅ 批量开启切换</button>
+    <button class="btn-red" onclick="batchDisableSwitch()">❌ 批量关闭切换</button>
+    <button class="btn-green" onclick="batchEnableEvening()" style="background:#67C23A;">✅ 批量开启晚讲评</button>
+    <button class="btn-red" onclick="batchDisableEvening()">❌ 批量关闭晚讲评</button>
+    <button class="btn-refresh" onclick="refreshSwitchPermission()" style="background:#409eff;">🔄 刷新列表</button>
 </div>
 <table>
     <tr>
@@ -158,8 +160,8 @@ th{background:#f5f7fa;font-size:18px;}
         <th>工号</th>
         <th>姓名</th>
         <th>负责部门</th>
-        <th>切换权限</th>
-        <th>操作</th>
+        <th>切换管理员</th>
+        <th>查看晚讲评</th>
     </tr>
     <tbody id="switchPermissionList"></tbody>
 </table>
@@ -543,28 +545,44 @@ th{background:#f5f7fa;font-size:18px;}
         let html='';
         if(data && data.length > 0){
             data.forEach(t => {
-                let status = t.can_switch ? '✅ 已开启' : '❌ 未开启';
-                let statusClass = t.can_switch ? 'status-on' : 'status-off';
-                let btnText = t.can_switch ? '关闭权限' : '开启权限';
-                let btnClass = t.can_switch ? 'btn-red' : 'btn-green';
+                let switchStatus = t.can_switch ? '✅' : '❌';
+                let switchBtn = t.can_switch ? '关闭' : '开启';
+                let switchClass = t.can_switch ? 'btn-red' : 'btn-green';
+                
+                let eveningStatus = t.can_view_evening ? '✅' : '❌';
+                let eveningBtn = t.can_view_evening ? '关闭' : '开启';
+                let eveningClass = t.can_view_evening ? 'btn-red' : 'btn-green';
+                
                 html += `<tr>
                     <td><input type="checkbox" class="switchCheck" data-uid="${t.uid}"></td>
-                    <td>${t.uid}</td><td>${t.name}</td><td>${t.dept || '未设置'}</td>
-                    <td class="${statusClass}">${status}</td>
-                    <td><button class="${btnClass}" onclick="toggleSwitchPermission('${t.uid}', ${!t.can_switch})" style="padding:6px 12px;">${btnText}</button></td>
+                    <td>${t.uid}</td>
+                    <td>${t.name}</td>
+                    <td>${t.dept || '未设置'}</td>
+                    <td>${switchStatus} <button class="${switchClass}" onclick="toggleSwitchPermission('${t.uid}', ${!t.can_switch})" style="padding:4px 10px;">${switchBtn}</button></td>
+                    <td>${eveningStatus} <button class="${eveningClass}" onclick="toggleEveningPermission('${t.uid}', ${!t.can_view_evening})" style="padding:4px 10px;">${eveningBtn}</button></td>
                 </tr>`;
             });
         }
         $('switchPermissionList').innerHTML = html || '<tr><td colspan="6">暂无部长数据</td></tr>';
     }
     window.refreshSwitchPermission = refreshSwitchPermission;
+    
     window.toggleAllSwitch = ()=> document.querySelectorAll('.switchCheck').forEach(i=>i.checked=$('checkAllSwitch').checked);
+    
     window.toggleSwitchPermission = async function(uid, enable) {
         if(!confirm(`确定${enable?'开启':'关闭'}该部长的管理员切换权限？`)) return;
         const { error } = await sb.from('users').update({ can_switch: enable }).eq('uid', uid).eq('role', 'teacher');
         if(error){ alert('操作失败：' + error.message); }
         else { refreshSwitchPermission(); alert(`已${enable?'开启':'关闭'}切换权限`); }
     };
+    
+    window.toggleEveningPermission = async function(uid, enable) {
+        if(!confirm(`确定${enable?'开启':'关闭'}该部长的晚讲评查看权限？`)) return;
+        const { error } = await sb.from('users').update({ can_view_evening: enable }).eq('uid', uid).eq('role', 'teacher');
+        if(error){ alert('操作失败：' + error.message); }
+        else { refreshSwitchPermission(); alert(`已${enable?'开启':'关闭'}晚讲评查看权限`); }
+    };
+    
     window.batchEnableSwitch = async function(){
         let checks = document.querySelectorAll('.switchCheck:checked');
         if(!checks.length){ alert('请先选择部长'); return; }
@@ -574,6 +592,7 @@ th{background:#f5f7fa;font-size:18px;}
         if(error){ alert('操作失败：' + error.message); }
         else { refreshSwitchPermission(); alert(`已开启 ${checks.length} 个部长的切换权限`); }
     };
+    
     window.batchDisableSwitch = async function(){
         let checks = document.querySelectorAll('.switchCheck:checked');
         if(!checks.length){ alert('请先选择部长'); return; }
@@ -582,6 +601,26 @@ th{background:#f5f7fa;font-size:18px;}
         const { error } = await sb.from('users').update({ can_switch: false }).in('uid', uids).eq('role', 'teacher');
         if(error){ alert('操作失败：' + error.message); }
         else { refreshSwitchPermission(); alert(`已关闭 ${checks.length} 个部长的切换权限`); }
+    };
+    
+    window.batchEnableEvening = async function(){
+        let checks = document.querySelectorAll('.switchCheck:checked');
+        if(!checks.length){ alert('请先选择部长'); return; }
+        if(!confirm(`确定开启选中的 ${checks.length} 个部长的晚讲评查看权限？`)) return;
+        let uids = Array.from(checks).map(c => c.dataset.uid);
+        const { error } = await sb.from('users').update({ can_view_evening: true }).in('uid', uids).eq('role', 'teacher');
+        if(error){ alert('操作失败：' + error.message); }
+        else { refreshSwitchPermission(); alert(`已开启 ${checks.length} 个部长的晚讲评查看权限`); }
+    };
+    
+    window.batchDisableEvening = async function(){
+        let checks = document.querySelectorAll('.switchCheck:checked');
+        if(!checks.length){ alert('请先选择部长'); return; }
+        if(!confirm(`确定关闭选中的 ${checks.length} 个部长的晚讲评查看权限？`)) return;
+        let uids = Array.from(checks).map(c => c.dataset.uid);
+        const { error } = await sb.from('users').update({ can_view_evening: false }).in('uid', uids).eq('role', 'teacher');
+        if(error){ alert('操作失败：' + error.message); }
+        else { refreshSwitchPermission(); alert(`已关闭 ${checks.length} 个部长的晚讲评查看权限`); }
     };
 
 })();

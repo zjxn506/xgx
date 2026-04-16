@@ -26,14 +26,18 @@ body{
 .page{display:none;}.page.active{display:block;}
 .page .page{background:rgba(255,255,255,0.9);border-radius:12px;padding:20px;}
 table{width:100%;border-collapse:collapse;margin:20px 0;background:rgba(255,255,255,0.95);}
-th,td{border:1px solid #eee;padding:12px;text-align:center;}
+th,td{border:1px solid #eee;padding:10px;text-align:center;font-size:13px;}
 th{background:#f5f7fa;}
-button{background:#409eff;color:white;padding:8px 12px;border:none;border-radius:4px;cursor:pointer;}
+button{background:#409eff;color:white;padding:6px 10px;border:none;border-radius:4px;cursor:pointer;font-size:13px;}
 .btn-red{background:#F56C6C;}
-input{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;}
+input,select{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;}
 .time-tip{color:red;font-size:12px;}
 .check-input{width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;}
 h3{color:#303133;margin-bottom:15px;}
+.form-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:15px;}
+.form-row select{width:12%;}
+.form-row input{width:10%;}
+.form-row .btn-submit{width:8%;}
 </style>
 </head>
 <body>
@@ -51,6 +55,7 @@ h3{color:#303133;margin-bottom:15px;}
 <div class="menu-item" onclick="showPage('course')">选课</div>
 <div class="menu-item" onclick="showPage('my')">我的课程</div>
 <div class="menu-item" onclick="showPage('checkCourse')">查课情况</div>
+<div class="menu-item" onclick="showPage('eveningReview')">晚讲评检查</div>
 <div class="menu-item" onclick="showPage('account')">修改账户</div>
 <div class="menu-item" onclick="logout()">退出登录</div>
 <div class="menu-item menu-item-danger" onclick="deleteAccount()">注销账号</div>
@@ -83,6 +88,42 @@ h3{color:#303133;margin-bottom:15px;}
     <th>人数</th><th>情况</th><th>实到人数</th><th>出勤率</th><th>操作</th>
 </tr>
 <tbody id="checkCourseList"></tbody>
+</table>
+</div>
+<div class="page" id="page-eveningReview">
+<h3>晚讲评检查填写</h3>
+<div class="form-row">
+    <select id="counselor">
+        <option value="">选择辅导员</option>
+        <option value="王津隆">王津隆</option>
+        <option value="张珂">张珂</option>
+        <option value="吴天宇">吴天宇</option>
+        <option value="梁旭">梁旭</option>
+        <option value="夏辰雪">夏辰雪</option>
+        <option value="毛文秀">毛文秀</option>
+        <option value="郝传策">郝传策</option>
+        <option value="陈晓靖">陈晓靖</option>
+        <option value="王云玲">王云玲</option>
+        <option value="吴兆龙">吴兆龙</option>
+        <option value="许旭">许旭</option>
+    </select>
+    <input id="classroom" placeholder="教室">
+    <input id="duration" placeholder="时长(如19:00-20:30)">
+    <input id="totalMinutes" placeholder="总分钟" type="number">
+    <input id="className" placeholder="班级">
+    <input id="shouldAttend" placeholder="应到" type="number">
+    <input id="actualAttend" placeholder="实到" type="number">
+    <input id="discipline" placeholder="纪律情况">
+    <input id="content" placeholder="内容">
+    <button onclick="submitEveningReview()" class="btn-submit" style="background:#67C23A;">提交</button>
+    <button onclick="refreshEveningReview()" style="background:#409eff;">刷新</button>
+</div>
+<table>
+    <tr>
+        <th>辅导员</th><th>教室</th><th>时长</th><th>分钟</th><th>班级</th>
+        <th>应到</th><th>实到</th><th>纪律</th><th>内容</th><th>填表人</th><th>时间</th><th>操作</th>
+    </tr>
+    <tbody id="eveningReviewList"></tbody>
 </table>
 </div>
 <div class="page" id="page-account">
@@ -139,6 +180,7 @@ h3{color:#303133;margin-bottom:15px;}
         if(id==='course') loadCourses();
         if(id==='my') loadMyCourses();
         if(id==='checkCourse') loadCheckCourses();
+        if(id==='eveningReview') refreshEveningReview();
     };
 
     window.refreshCurrentPage = function(){
@@ -146,6 +188,7 @@ h3{color:#303133;margin-bottom:15px;}
         if(activePage.id === 'page-course'){ loadCourses(); alert('课程列表已刷新'); }
         else if(activePage.id === 'page-my'){ loadMyCourses(); alert('我的课程已刷新'); }
         else if(activePage.id === 'page-checkCourse'){ loadCheckCourses(); alert('查课列表已刷新'); }
+        else if(activePage.id === 'page-eveningReview'){ refreshEveningReview(); alert('晚讲评列表已刷新'); }
         else { alert('当前页面无需刷新'); }
     };
 
@@ -273,6 +316,100 @@ h3{color:#303133;margin-bottom:15px;}
             }
             alert('保存成功');
         }
+    };
+
+    // ========== 晚讲评检查 ==========
+    async function refreshEveningReview(){
+        const { data } = await sb.from('evening_reviews').select('*').order('created_at', { ascending: false });
+        let html = '';
+        if(data && data.length > 0){
+            data.forEach(r => {
+                let createdAt = r.created_at ? new Date(r.created_at).toLocaleString('zh-CN') : '';
+                html += `<tr>
+                    <td>${r.counselor || ''}</td>
+                    <td>${r.classroom || ''}</td>
+                    <td>${r.duration || ''}</td>
+                    <td>${r.total_minutes || 0}</td>
+                    <td>${r.class_name || ''}</td>
+                    <td>${r.should_attend || 0}</td>
+                    <td>${r.actual_attend || 0}</td>
+                    <td>${r.discipline || '—'}</td>
+                    <td>${r.content || '—'}</td>
+                    <td>${r.reporter || ''}</td>
+                    <td>${createdAt}</td>
+                    <td>
+                        <button onclick="editEveningReview('${r.id}')">修改</button>
+                        <button class="btn-red" onclick="delEveningReview('${r.id}')">删除</button>
+                    </td>
+                </tr>`;
+            });
+        }
+        $('eveningReviewList').innerHTML = html || '<tr><td colspan="12">暂无晚讲评记录</td></tr>';
+    }
+    window.refreshEveningReview = refreshEveningReview;
+
+    window.submitEveningReview = async function(){
+        let counselor = $('counselor').value;
+        let classroom = $('classroom').value.trim();
+        let duration = $('duration').value.trim();
+        let totalMinutes = parseInt($('totalMinutes').value) || 0;
+        let className = $('className').value.trim();
+        let shouldAttend = parseInt($('shouldAttend').value) || 0;
+        let actualAttend = parseInt($('actualAttend').value) || 0;
+        let discipline = $('discipline').value.trim();
+        let content = $('content').value.trim();
+        
+        if(!counselor || !classroom || !duration || !totalMinutes || !className || !shouldAttend || !actualAttend){
+            alert('请填写完整（辅导员、教室、时长、总分钟、班级、应到人数、实到人数）');
+            return;
+        }
+        
+        let id = 'er_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+        
+        const { error } = await sb.from('evening_reviews').insert([{
+            id, counselor, classroom, duration, total_minutes: totalMinutes,
+            class_name: className, should_attend: shouldAttend, actual_attend: actualAttend,
+            discipline: discipline || null, content: content || null,
+            reporter: u.name,
+            department: '信息管理与工程系团总支学生会'
+        }]);
+        
+        if(error){ alert('提交失败：' + error.message); return; }
+        
+        $('counselor').value = '';
+        $('classroom').value = '';
+        $('duration').value = '';
+        $('totalMinutes').value = '';
+        $('className').value = '';
+        $('shouldAttend').value = '';
+        $('actualAttend').value = '';
+        $('discipline').value = '';
+        $('content').value = '';
+        
+        refreshEveningReview();
+        alert('提交成功');
+    };
+
+    window.editEveningReview = async function(id){
+        const { data } = await sb.from('evening_reviews').select('*').eq('id', id).maybeSingle();
+        if(data){
+            $('counselor').value = data.counselor || '';
+            $('classroom').value = data.classroom || '';
+            $('duration').value = data.duration || '';
+            $('totalMinutes').value = data.total_minutes || '';
+            $('className').value = data.class_name || '';
+            $('shouldAttend').value = data.should_attend || '';
+            $('actualAttend').value = data.actual_attend || '';
+            $('discipline').value = data.discipline || '';
+            $('content').value = data.content || '';
+            window.currentEditReviewId = id;
+        }
+    };
+
+    window.delEveningReview = async function(id){
+        if(!confirm('确定删除？')) return;
+        await sb.from('evening_reviews').delete().eq('id', id);
+        refreshEveningReview();
     };
 
     window.updateAccount = async function(){
