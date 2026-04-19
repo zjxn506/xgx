@@ -83,6 +83,11 @@ h3{color:#303133;margin-bottom:15px;}
     flex:0.5;
     min-width:120px;
 }
+.form-hint{
+    font-size:12px;
+    color:#999;
+    margin-left:10px;
+}
 .form-actions{
     display:flex;
     justify-content:flex-end;
@@ -198,10 +203,11 @@ h3{color:#303133;margin-bottom:15px;}
             <input id="totalMinutes" type="number" placeholder="如：90" class="short-input">
         </div>
         
-        <!-- 第三行：班级 -->
+        <!-- 第三行：班级（支持多个） -->
         <div class="form-row-vertical">
             <label>班级：</label>
-            <input id="className" placeholder="如：数科24401">
+            <input id="className" placeholder="如：数科24401、数科24402、数科24403">
+            <span class="form-hint">多个班级用逗号、顿号或空格分隔</span>
         </div>
         
         <!-- 第四行：应到人数 + 实到人数 -->
@@ -425,23 +431,37 @@ h3{color:#303133;margin-bottom:15px;}
     };
 
     // ========== 晚讲评检查 ==========
+    // 解析班级字符串（支持逗号、顿号、空格分隔）
+    function parseClassNames(input) {
+        if(!input) return '';
+        let classes = input.split(/[,，、\s]+/).filter(c => c.trim() !== '');
+        return classes.join('、');
+    }
+
     async function refreshEveningReview(){
-        const { data } = await sb.from('evening_reviews').select('*').order('created_at', { ascending: false });
+        // 只查询当前干事填写的数据
+        const { data } = await sb.from('evening_reviews')
+            .select('*')
+            .eq('reporter', u.name)
+            .order('created_at', { ascending: false });
+        
         let html = '';
         if(data && data.length > 0){
             data.forEach(r => {
                 let createdAt = r.created_at ? new Date(r.created_at).toLocaleString('zh-CN') : '';
                 let discipline = r.discipline || '—';
                 let content = r.content || '—';
+                let className = r.class_name || '—';
                 if(discipline.length > 10) discipline = discipline.substring(0, 10) + '...';
                 if(content.length > 15) content = content.substring(0, 15) + '...';
+                if(className.length > 25) className = className.substring(0, 25) + '...';
                 
                 html += `<tr>
                     <td>${r.counselor || ''}</td>
                     <td>${r.classroom || ''}</td>
                     <td>${r.duration || ''}</td>
                     <td>${r.total_minutes || 0}</td>
-                    <td>${r.class_name || ''}</td>
+                    <td title="${r.class_name || ''}">${className}</td>
                     <td>${r.should_attend || 0}</td>
                     <td>${r.actual_attend || 0}</td>
                     <td title="${r.discipline || ''}">${discipline}</td>
@@ -464,29 +484,53 @@ h3{color:#303133;margin-bottom:15px;}
         let classroom = $('classroom').value.trim();
         let duration = $('duration').value.trim();
         let totalMinutes = parseInt($('totalMinutes').value) || 0;
-        let className = $('className').value.trim();
+        let classNameInput = $('className').value.trim();
         let shouldAttend = parseInt($('shouldAttend').value) || 0;
         let actualAttend = parseInt($('actualAttend').value) || 0;
         let discipline = $('discipline').value.trim();
         let content = $('content').value.trim();
         
-        if(!counselor || !classroom || !duration || !totalMinutes || !className || !shouldAttend || !actualAttend){
-            alert('请填写完整（辅导员、教室、时长、总分钟、班级、应到人数、实到人数）');
-            return;
-        }
+        // 检查所有必填项
+        if(!counselor){ alert('请选择辅导员'); return; }
+        if(!classroom){ alert('请填写教室'); return; }
+        if(!duration){ alert('请填写时长'); return; }
+        if(!totalMinutes || totalMinutes <= 0){ alert('请填写有效的总分钟'); return; }
+        if(!classNameInput){ alert('请填写班级'); return; }
+        if(!shouldAttend || shouldAttend <= 0){ alert('请填写有效的应到人数'); return; }
+        if(!actualAttend || actualAttend <= 0){ alert('请填写有效的实到人数'); return; }
         
-        let id = 'er_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+        // 解析并格式化班级
+        let className = parseClassNames(classNameInput);
         
-        const { error } = await sb.from('evening_reviews').insert([{
-            id, counselor, classroom, duration, total_minutes: totalMinutes,
-            class_name: className, should_attend: shouldAttend, actual_attend: actualAttend,
-            discipline: discipline || null, content: content || null,
+        let id = window.currentEditReviewId || 'er_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+        
+        const recordData = {
+            id,
+            counselor,
+            classroom,
+            duration,
+            total_minutes: totalMinutes,
+            class_name: className,
+            should_attend: shouldAttend,
+            actual_attend: actualAttend,
+            discipline: discipline || null,
+            content: content || null,
             reporter: u.name,
             department: '信息管理与工程系团总支学生会'
-        }]);
+        };
+        
+        let error;
+        if(window.currentEditReviewId){
+            const result = await sb.from('evening_reviews').update(recordData).eq('id', id);
+            error = result.error;
+        } else {
+            const result = await sb.from('evening_reviews').insert([recordData]);
+            error = result.error;
+        }
         
         if(error){ alert('提交失败：' + error.message); return; }
         
+        // 清空表单
         $('counselor').value = '';
         $('classroom').value = '';
         $('duration').value = '';
@@ -496,9 +540,10 @@ h3{color:#303133;margin-bottom:15px;}
         $('actualAttend').value = '';
         $('discipline').value = '';
         $('content').value = '';
+        window.currentEditReviewId = null;
         
         refreshEveningReview();
-        alert('提交成功');
+        alert(window.currentEditReviewId ? '修改成功' : '提交成功');
     };
 
     window.editEveningReview = async function(id){
