@@ -34,14 +34,73 @@ input,select{padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px;fo
 .time-tip{color:red;font-size:12px;}
 .check-input{width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;}
 h3{color:#303133;margin-bottom:15px;}
-.evening-form-container{background:rgba(255,255,255,0.95);border-radius:8px;padding:15px;margin-top:20px;border:1px solid #e4e7ed;}
-.evening-form-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;}
+
+/* 竖排表单样式 */
+.evening-form-container{
+    background:rgba(255,255,255,0.95);
+    border-radius:8px;
+    padding:20px;
+    margin-top:20px;
+    border:1px solid #e4e7ed;
+}
+.evening-form-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
+    padding-bottom:10px;
+    border-bottom:1px solid #e4e7ed;
+}
 .evening-form-header h4{margin:0;color:#303133;}
-.form-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
-.form-row select{width:12%;}
-.form-row input{width:10%;}
-.submit-btn{background:#67C23A;padding:8px 20px;font-size:14px;}
-.refresh-btn{background:#409eff;padding:8px 20px;font-size:14px;}
+.evening-form-vertical{
+    display:flex;
+    flex-direction:column;
+    gap:15px;
+}
+.form-row-vertical{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:15px;
+}
+.form-row-vertical label{
+    width:80px;
+    font-weight:bold;
+    color:#555;
+    font-size:14px;
+}
+.form-row-vertical select,
+.form-row-vertical input{
+    flex:1;
+    min-width:200px;
+    padding:10px;
+    border:1px solid #ddd;
+    border-radius:6px;
+    font-size:14px;
+    margin:0;
+}
+.form-row-vertical .short-input{
+    flex:0.5;
+    min-width:120px;
+}
+.form-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    margin-top:15px;
+    padding-top:15px;
+    border-top:1px solid #e4e7ed;
+}
+.submit-btn{
+    background:#67C23A;
+    padding:10px 24px;
+    font-size:14px;
+}
+.refresh-btn{
+    background:#409eff;
+    padding:10px 24px;
+    font-size:14px;
+}
 </style>
 </head>
 <body>
@@ -103,37 +162,73 @@ h3{color:#303133;margin-bottom:15px;}
     </tr>
     <tbody id="eveningReviewList"></tbody>
 </table>
+
+<!-- 填写表单区域（竖排布局） -->
 <div class="evening-form-container">
     <div class="evening-form-header">
         <h4>📝 填写晚讲评检查</h4>
-        <div>
+    </div>
+    <div class="evening-form-vertical">
+        <!-- 第一行：辅导员 + 教室 -->
+        <div class="form-row-vertical">
+            <label>辅导员：</label>
+            <select id="counselor">
+                <option value="">请选择辅导员</option>
+                <option value="王津隆">王津隆</option>
+                <option value="张珂">张珂</option>
+                <option value="吴天宇">吴天宇</option>
+                <option value="梁旭">梁旭</option>
+                <option value="夏辰雪">夏辰雪</option>
+                <option value="毛文秀">毛文秀</option>
+                <option value="郝传策">郝传策</option>
+                <option value="陈晓靖">陈晓靖</option>
+                <option value="王云玲">王云玲</option>
+                <option value="吴兆龙">吴兆龙</option>
+                <option value="许旭">许旭</option>
+            </select>
+            <label style="margin-left:20px;">教室：</label>
+            <input id="classroom" placeholder="如：J1-101">
+        </div>
+        
+        <!-- 第二行：时长 + 总分钟 -->
+        <div class="form-row-vertical">
+            <label>时长：</label>
+            <input id="duration" placeholder="如：19:00-20:30">
+            <label style="margin-left:20px;">总分钟：</label>
+            <input id="totalMinutes" type="number" placeholder="如：90" class="short-input">
+        </div>
+        
+        <!-- 第三行：班级 -->
+        <div class="form-row-vertical">
+            <label>班级：</label>
+            <input id="className" placeholder="如：数科24401">
+        </div>
+        
+        <!-- 第四行：应到人数 + 实到人数 -->
+        <div class="form-row-vertical">
+            <label>应到人数：</label>
+            <input id="shouldAttend" type="number" placeholder="应到人数" class="short-input">
+            <label style="margin-left:20px;">实到人数：</label>
+            <input id="actualAttend" type="number" placeholder="实到人数" class="short-input">
+        </div>
+        
+        <!-- 第五行：纪律情况 -->
+        <div class="form-row-vertical">
+            <label>纪律情况：</label>
+            <input id="discipline" placeholder="如：良好、有3人玩手机等">
+        </div>
+        
+        <!-- 第六行：内容 -->
+        <div class="form-row-vertical">
+            <label>内容：</label>
+            <input id="content" placeholder="晚讲评主要内容">
+        </div>
+        
+        <!-- 按钮区域 -->
+        <div class="form-actions">
             <button class="submit-btn" onclick="submitEveningReview()">📤 提交</button>
             <button class="refresh-btn" onclick="refreshEveningReview()">🔄 刷新数据</button>
         </div>
-    </div>
-    <div class="form-row">
-        <select id="counselor">
-            <option value="">选择辅导员</option>
-            <option value="王津隆">王津隆</option>
-            <option value="张珂">张珂</option>
-            <option value="吴天宇">吴天宇</option>
-            <option value="梁旭">梁旭</option>
-            <option value="夏辰雪">夏辰雪</option>
-            <option value="毛文秀">毛文秀</option>
-            <option value="郝传策">郝传策</option>
-            <option value="陈晓靖">陈晓靖</option>
-            <option value="王云玲">王云玲</option>
-            <option value="吴兆龙">吴兆龙</option>
-            <option value="许旭">许旭</option>
-        </select>
-        <input id="classroom" placeholder="教室">
-        <input id="duration" placeholder="时长(如19:00-20:30)">
-        <input id="totalMinutes" placeholder="总分钟" type="number">
-        <input id="className" placeholder="班级">
-        <input id="shouldAttend" placeholder="应到" type="number">
-        <input id="actualAttend" placeholder="实到" type="number">
-        <input id="discipline" placeholder="纪律情况">
-        <input id="content" placeholder="内容">
     </div>
 </div>
 </div>
@@ -435,7 +530,6 @@ h3{color:#303133;margin-bottom:15px;}
         if(!nu && !np){alert('至少改一项');return;}
         if(np && np.length<6){alert('密码至少6位');return;}
         
-        // 如果修改了学号，先检查新学号是否已被占用
         if(nu){
             const { data: existing } = await sb.from('users')
                 .select('uid')
@@ -452,19 +546,16 @@ h3{color:#303133;margin-bottom:15px;}
         if(nu) updateData.uid = nu;
         if(np) updateData.pwd = np;
         
-        // 更新 users 表（WHERE uid = 旧学号）
         const { error } = await sb.from('users')
             .update(updateData)
             .eq('uid', u.uid);
         
         if(error){alert('修改失败：'+error.message);return;}
         
-        // 同步更新 selects 表
         if(nu){ 
             await sb.from('selects').update({uid: nu}).eq('uid', u.uid); 
         }
         
-        // 更新 session 中的用户信息
         const updatedUser = {...u};
         if(nu) updatedUser.uid = nu;
         sessionStorage.setItem('user', JSON.stringify(updatedUser));
@@ -473,7 +564,6 @@ h3{color:#303133;margin-bottom:15px;}
         document.getElementById('newUid').value='';
         document.getElementById('newPwd').value='';
         
-        // 如果学号改变了，刷新页面
         if(nu){
             location.reload();
         }
