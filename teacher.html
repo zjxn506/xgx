@@ -139,6 +139,7 @@ select{padding:8px;border-radius:6px;border:1px solid #ddd;}
 <div class="btn-group">
     <button class="btn-green" onclick="exportEveningReviewExcel()">📊 导出全部数据</button>
     <button class="btn-refresh" onclick="refreshEveningReview()" style="background:#67C23A;">🔄 刷新</button>
+    <button class="btn-red" onclick="clearAllEveningReviews()">🧹 清空全部</button>
 </div>
 <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
     <select id="filterCounselor" onchange="filterEveningReview()">
@@ -649,6 +650,22 @@ select{padding:8px;border-radius:6px;border:1px solid #ddd;}
         XLSX.writeFile(wb, `晚讲评记录_${dateStr}.xlsx`);
         
         alert(`✅ 导出成功！共 ${data.length} 条记录`);
+    };
+
+    // 清空全部晚讲评数据
+    window.clearAllEveningReviews = async function(){
+        if(!confirm('⚠️ 确定清空所有晚讲评记录吗？此操作不可恢复！')) return;
+        if(!confirm('请再次确认：真的要删除全部晚讲评数据吗？')) return;
+        
+        const { error } = await sb.from('evening_reviews').delete().gt('id', '');
+        
+        if(error){
+            alert('清空失败：' + error.message);
+        } else {
+            allEveningData = [];
+            renderEveningTable([]);
+            alert('✅ 已清空全部晚讲评记录');
+        }
     };
 
     // ========== 修改账户 ==========
