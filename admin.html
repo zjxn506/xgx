@@ -60,9 +60,11 @@ th{background:#f5f7fa;font-size:16px;}
 <div class="menu-item active" onclick="showPage('home')">首页</div>
 <div class="menu-item" onclick="showPage('student')">干事管理</div>
 <div class="menu-item" onclick="showPage('teacher')">部长管理</div>
+<div class="menu-item" onclick="showPage('secretary')">团支书管理</div>
 <div class="menu-item" onclick="showPage('course')">课程管理</div>
 <div class="menu-item" onclick="showPage('select')">查看选课</div>
 <div class="menu-item" onclick="showPage('unselect')">未选课干事</div>
+<div class="menu-item" onclick="showPage('leagueMeeting')">申报团会管理</div>
 <div class="menu-item" onclick="showPage('switchPermission')">切换权限管理</div>
 <div class="menu-item" onclick="logout()">退出登录</div>
 </div>
@@ -107,6 +109,28 @@ th{background:#f5f7fa;font-size:16px;}
 </table>
 </div>
 
+<!-- 团支书管理 -->
+<div class="page" id="page-secretary">
+<h2>团支书管理</h2>
+<div class="excel-box">
+<input type="file" id="secretaryExcel" accept=".xlsx,.xls">
+<button class="btn-green" onclick="importSecretaryExcel()">批量导入</button>
+<button class="btn-red" onclick="batchDelSecretary()" style="margin-left:10px;">批量删除选中团支书</button>
+</div>
+<input id="seuid" placeholder="账号" style="width:14%">
+<input id="sename" placeholder="姓名" style="width:14%">
+<input id="sepwd" placeholder="密码" style="width:14%">
+<input id="seleague" placeholder="所在团支部名称" style="width:22%">
+<button onclick="addSecretary()" style="width:14%">提交</button>
+<table>
+<tr>
+    <th><input type="checkbox" id="checkAllSecretary" onclick="toggleAllSecretary()"> 全选</th>
+    <th>账号</th><th>姓名</th><th>密码</th><th>所在团支部名称</th><th>操作</th>
+</tr>
+<tbody id="secretaryList"></tbody>
+</table>
+</div>
+
 <div class="page" id="page-course">
 <h2>课程管理</h2>
 <div class="excel-box">
@@ -145,6 +169,25 @@ th{background:#f5f7fa;font-size:16px;}
 </table>
 </div>
 
+<div class="page" id="page-leagueMeeting">
+<h2>申报团会管理</h2>
+<div class="btn-group">
+    <button class="btn-green" onclick="exportLeagueMeetingExcel()">📊 一键导出</button>
+    <button class="btn-orange" onclick="showUnreportedSecretaries()">👀 查看未填写团支书</button>
+    <button class="btn-red" onclick="batchDelLeagueMeeting()">🗑️ 批量删除</button>
+    <button class="btn-red" onclick="clearAllLeagueMeetings()">🧹 清空全部</button>
+    <button class="btn-refresh" onclick="refreshLeagueMeeting()" style="background:#409eff;">🔄 刷新</button>
+</div>
+<table>
+    <tr>
+        <th><input type="checkbox" id="checkAllLM" onclick="toggleAllLM()"> 全选</th>
+        <th>团支部名称</th><th>团会时间</th><th>人数</th><th>辅导员</th>
+        <th>申报人</th><th>申报时间</th><th>操作</th>
+    </tr>
+    <tbody id="leagueMeetingList"></tbody>
+</table>
+</div>
+
 <div class="page" id="page-switchPermission">
 <h2>切换权限管理</h2>
 <div class="btn-group">
@@ -152,16 +195,15 @@ th{background:#f5f7fa;font-size:16px;}
     <button class="btn-red" onclick="batchDisableSwitch()">❌ 批量关闭切换</button>
     <button class="btn-green" onclick="batchEnableEvening()" style="background:#67C23A;">✅ 批量开启晚讲评</button>
     <button class="btn-red" onclick="batchDisableEvening()">❌ 批量关闭晚讲评</button>
+    <button class="btn-green" onclick="batchEnableLeagueView()" style="background:#67C23A;">✅ 批量开启申报团会查看</button>
+    <button class="btn-red" onclick="batchDisableLeagueView()">❌ 批量关闭申报团会查看</button>
     <button class="btn-refresh" onclick="refreshSwitchPermission()" style="background:#409eff;">🔄 刷新列表</button>
 </div>
 <table>
     <tr>
         <th><input type="checkbox" id="checkAllSwitch" onclick="toggleAllSwitch()"> 全选</th>
-        <th>工号</th>
-        <th>姓名</th>
-        <th>负责部门</th>
-        <th>切换管理员</th>
-        <th>查看晚讲评</th>
+        <th>工号</th><th>姓名</th><th>负责部门</th>
+        <th>切换管理员</th><th>查看晚讲评</th><th>查看申报团会</th>
     </tr>
     <tbody id="switchPermissionList"></tbody>
 </table>
@@ -224,9 +266,11 @@ th{background:#f5f7fa;font-size:16px;}
         document.querySelector('.menu-item[onclick="showPage(\''+pageId+'\')"]').classList.add('active');
         if(pageId==='student') refreshStudent();
         if(pageId==='teacher') refreshTeacher();
+        if(pageId==='secretary') refreshSecretary();
         if(pageId==='course') refreshCourse();
         if(pageId==='select') refreshSelect();
         if(pageId==='unselect') refreshUnselect();
+        if(pageId==='leagueMeeting') refreshLeagueMeeting();
         if(pageId==='switchPermission') refreshSwitchPermission();
     };
 
@@ -234,9 +278,11 @@ th{background:#f5f7fa;font-size:16px;}
         const activePage = document.querySelector('.page.active');
         if(activePage.id === 'page-student'){ refreshStudent(); alert('干事列表已刷新'); }
         else if(activePage.id === 'page-teacher'){ refreshTeacher(); alert('部长列表已刷新'); }
+        else if(activePage.id === 'page-secretary'){ refreshSecretary(); alert('团支书列表已刷新'); }
         else if(activePage.id === 'page-course'){ refreshCourse(); alert('课程列表已刷新'); }
         else if(activePage.id === 'page-select'){ refreshSelect(); alert('选课列表已刷新'); }
         else if(activePage.id === 'page-unselect'){ refreshUnselect(); alert('未选课列表已刷新'); }
+        else if(activePage.id === 'page-leagueMeeting'){ refreshLeagueMeeting(); alert('申报团会列表已刷新'); }
         else if(activePage.id === 'page-switchPermission'){ refreshSwitchPermission(); alert('权限列表已刷新'); }
         else { alert('当前页面无需刷新'); }
     };
@@ -425,6 +471,101 @@ th{background:#f5f7fa;font-size:16px;}
         r.readAsBinaryString(f);
     };
 
+    // ========== 团支书管理 ==========
+    async function refreshSecretary(){
+        const {data} = await sb.from('users').select('*').eq('role','secretary').order('uid');
+        let html='';
+        if(data){
+            data.forEach(s=>{
+                html+=`<tr>
+                    <td><input type="checkbox" class="secretaryCheck" data-uid="${s.uid}"></td>
+                    <td>${s.uid}</td><td>${s.name}</td><td>${s.pwd}</td><td>${s.league_name||'未设置'}</td>
+                    <td>
+                        <button onclick="editSecretary('${s.uid}')">修改</button>
+                        <button class="btn-red" onclick="delSecretary('${s.uid}')">删除</button>
+                    </td>
+                </tr>`;
+            });
+        }
+        $('secretaryList').innerHTML=html||'<tr><td colspan="6">暂无团支书</td></tr>';
+    }
+    window.refreshSecretary = refreshSecretary;
+
+    window.toggleAllSecretary = ()=> document.querySelectorAll('.secretaryCheck').forEach(i=>i.checked=$('checkAllSecretary').checked);
+
+    window.batchDelSecretary = async ()=>{
+        let checks = document.querySelectorAll('.secretaryCheck:checked');
+        if(!checks.length){alert('请选择');return;}
+        if(!confirm('确定删除选中的团支书？'))return;
+        let uids = Array.from(checks).map(c=>c.dataset.uid);
+        await sb.from('users').delete().in('uid', uids);
+        refreshSecretary(); alert('删除成功');
+    };
+
+    window.editSecretary = async function(uid){
+        const {data} = await sb.from('users').select('*').eq('uid',uid).maybeSingle();
+        if(data){
+            $('seuid').value=data.uid;
+            $('sename').value=data.name;
+            $('sepwd').value=data.pwd;
+            $('seleague').value=data.league_name||'';
+            window.oldSecretaryUid = uid;
+        }
+    };
+
+    window.addSecretary = async function(){
+        let uid = $('seuid').value.trim();
+        let name = $('sename').value.trim();
+        let pwd = $('sepwd').value.trim();
+        let league = $('seleague').value.trim();
+        if(!uid||!name||!pwd||!league){alert('请填写完整');return;}
+        if(pwd.length<6){alert('密码至少6位');return;}
+        
+        const { error } = await sb.from('users').upsert([{
+            uid, name, pwd, role:'secretary', league_name: league
+        }], {onConflict: 'uid'});
+        
+        if(error){alert('保存失败：'+error.message);return;}
+        
+        $('seuid').value=$('sename').value=$('sepwd').value=$('seleague').value='';
+        window.oldSecretaryUid = null;
+        refreshSecretary();
+        alert('保存成功');
+    };
+
+    window.delSecretary = async uid=>{ if(confirm('确定删除？')){ await sb.from('users').delete().eq('uid',uid); refreshSecretary(); } };
+
+    window.importSecretaryExcel = async function(){
+        let f = $('secretaryExcel').files[0]; if(!f){alert('请选择文件');return;}
+        let r = new FileReader();
+        r.onload = async e => {
+            try {
+                let wb = XLSX.read(e.target.result, {type:'binary'});
+                let data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                let valid = [];
+                for(let row of data){
+                    let uid = row['账号']||row['uid']||row['UID'];
+                    let name = row['姓名']||row['name'];
+                    let pwd = row['密码']||row['pwd'];
+                    let league = row['所在团支部名称']||row['团支部']||row['league_name']||row['league']||'';
+                    if(uid && name && pwd){
+                        valid.push({uid: String(uid).trim(), name: String(name).trim(), pwd: String(pwd).trim(), role:'secretary', league_name: String(league).trim()||'未设置'});
+                    }
+                }
+                if(!valid.length){alert('没有有效数据');return;}
+                let success = 0;
+                for(let item of valid){
+                    const { error } = await sb.from('users').upsert([item], {onConflict: 'uid'});
+                    if(!error) success++;
+                }
+                setTimeout(refreshSecretary, 500);
+                alert('✅ 导入成功！共 ' + success + ' 条');
+                $('secretaryExcel').value='';
+            } catch(err) { alert('导入失败：' + err.message); }
+        };
+        r.readAsBinaryString(f);
+    };
+
     // ========== 课程管理 ==========
     async function refreshCourse(){
         const {data} = await sb.from('courses').select('*').order('id');
@@ -539,6 +680,77 @@ th{background:#f5f7fa;font-size:16px;}
         XLSX.writeFile(wb, '未选课干事.xlsx');
     };
 
+    // ========== 申报团会管理 ==========
+    async function refreshLeagueMeeting(){
+        const { data } = await sb.from('league_meetings').select('*').order('created_at', { ascending: false });
+        let html = '';
+        if(data && data.length > 0){
+            data.forEach(r => {
+                let createdAt = r.created_at ? new Date(r.created_at).toLocaleString('zh-CN') : '';
+                html += `<tr>
+                    <td><input type="checkbox" class="lmCheck" data-id="${r.id}"></td>
+                    <td>${r.league_name || ''}</td><td>${r.meeting_time || ''}</td>
+                    <td>${r.attendees || 0}</td><td>${r.counselor || ''}</td>
+                    <td>${r.reporter || ''}</td><td>${createdAt}</td>
+                    <td><button onclick="editLeagueMeeting('${r.id}')">修改</button><button class="btn-red" onclick="delLeagueMeeting('${r.id}')">删除</button></td>
+                </tr>`;
+            });
+        }
+        $('leagueMeetingList').innerHTML = html || '<tr><td colspan="8">暂无申报记录</td></tr>';
+    }
+    window.refreshLeagueMeeting = refreshLeagueMeeting;
+    window.toggleAllLM = ()=> document.querySelectorAll('.lmCheck').forEach(i=>i.checked=$('checkAllLM').checked);
+    window.batchDelLeagueMeeting = async function(){
+        let checks = document.querySelectorAll('.lmCheck:checked');
+        if(!checks.length){ alert('请先选择记录'); return; }
+        if(!confirm(`确定删除选中的 ${checks.length} 条记录？`)) return;
+        let ids = Array.from(checks).map(c => c.dataset.id);
+        await sb.from('league_meetings').delete().in('id', ids);
+        refreshLeagueMeeting(); alert('删除成功');
+    };
+    window.clearAllLeagueMeetings = async function(){
+        if(!confirm('确定清空所有申报团会记录？此操作不可恢复！')) return;
+        await sb.from('league_meetings').delete().gt('id', '');
+        refreshLeagueMeeting(); alert('已清空全部');
+    };
+    window.editLeagueMeeting = async function(id){
+        const newVal = prompt('修改内容（格式：团支部名称,团会时间,人数,辅导员）');
+        if(!newVal) return;
+        let parts = newVal.split(',');
+        if(parts.length < 4){ alert('格式错误'); return; }
+        const { error } = await sb.from('league_meetings').update({
+            league_name: parts[0].trim(), meeting_time: parts[1].trim(),
+            attendees: parseInt(parts[2].trim()) || 0, counselor: parts[3].trim()
+        }).eq('id', id);
+        if(error){ alert('修改失败：'+error.message); }
+        else { refreshLeagueMeeting(); alert('修改成功'); }
+    };
+    window.delLeagueMeeting = async function(id){
+        if(!confirm('确定删除？')) return;
+        await sb.from('league_meetings').delete().eq('id', id);
+        refreshLeagueMeeting();
+    };
+    window.showUnreportedSecretaries = async function(){
+        const { data: secretaries } = await sb.from('users').select('uid, name').eq('role', 'secretary');
+        const { data: reports } = await sb.from('league_meetings').select('reporter');
+        if(!secretaries || secretaries.length === 0){ alert('暂无团支书账号'); return; }
+        let reportedNames = [...new Set((reports || []).map(r => r.reporter))];
+        let unreported = secretaries.filter(s => !reportedNames.includes(s.name));
+        if(unreported.length === 0){ alert('🎉 所有团支书都已申报！'); }
+        else { alert(`📋 未申报团会的团支书（${unreported.length}人）：\n\n${unreported.map(s => `${s.name}（${s.uid}）`).join('\n')}`); }
+    };
+    window.exportLeagueMeetingExcel = function(){
+        const rows = [['团支部名称','团会时间','人数','辅导员','申报人','申报时间']];
+        document.querySelectorAll('#leagueMeetingList tr').forEach(tr => {
+            let row = [];
+            tr.querySelectorAll('td').forEach((td, i) => { if(i > 0 && i < 7) row.push(td.innerText); });
+            if(row.length === 6) rows.push(row);
+        });
+        let ws = XLSX.utils.aoa_to_sheet(rows), wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '申报团会');
+        XLSX.writeFile(wb, `申报团会_${new Date().toISOString().split('T')[0]}.xlsx`);
+    };
+
     // ========== 切换权限管理 ==========
     async function refreshSwitchPermission(){
         const {data} = await sb.from('users').select('*').eq('role','teacher').order('uid');
@@ -548,79 +760,88 @@ th{background:#f5f7fa;font-size:16px;}
                 let switchStatus = t.can_switch ? '✅' : '❌';
                 let switchBtn = t.can_switch ? '关闭' : '开启';
                 let switchClass = t.can_switch ? 'btn-red' : 'btn-green';
-                
                 let eveningStatus = t.can_view_evening ? '✅' : '❌';
                 let eveningBtn = t.can_view_evening ? '关闭' : '开启';
                 let eveningClass = t.can_view_evening ? 'btn-red' : 'btn-green';
+                let leagueStatus = t.can_view_league ? '✅' : '❌';
+                let leagueBtn = t.can_view_league ? '关闭' : '开启';
+                let leagueClass = t.can_view_league ? 'btn-red' : 'btn-green';
                 
                 html += `<tr>
                     <td><input type="checkbox" class="switchCheck" data-uid="${t.uid}"></td>
-                    <td>${t.uid}</td>
-                    <td>${t.name}</td>
-                    <td>${t.dept || '未设置'}</td>
+                    <td>${t.uid}</td><td>${t.name}</td><td>${t.dept || '未设置'}</td>
                     <td>${switchStatus} <button class="${switchClass}" onclick="toggleSwitchPermission('${t.uid}', ${!t.can_switch})" style="padding:4px 10px;">${switchBtn}</button></td>
                     <td>${eveningStatus} <button class="${eveningClass}" onclick="toggleEveningPermission('${t.uid}', ${!t.can_view_evening})" style="padding:4px 10px;">${eveningBtn}</button></td>
+                    <td>${leagueStatus} <button class="${leagueClass}" onclick="toggleLeagueViewPermission('${t.uid}', ${!t.can_view_league})" style="padding:4px 10px;">${leagueBtn}</button></td>
                 </tr>`;
             });
         }
-        $('switchPermissionList').innerHTML = html || '<tr><td colspan="6">暂无部长数据</td></tr>';
+        $('switchPermissionList').innerHTML = html || '<tr><td colspan="7">暂无部长数据</td></tr>';
     }
     window.refreshSwitchPermission = refreshSwitchPermission;
-    
     window.toggleAllSwitch = ()=> document.querySelectorAll('.switchCheck').forEach(i=>i.checked=$('checkAllSwitch').checked);
-    
     window.toggleSwitchPermission = async function(uid, enable) {
         if(!confirm(`确定${enable?'开启':'关闭'}该部长的管理员切换权限？`)) return;
         const { error } = await sb.from('users').update({ can_switch: enable }).eq('uid', uid).eq('role', 'teacher');
-        if(error){ alert('操作失败：' + error.message); }
-        else { refreshSwitchPermission(); alert(`已${enable?'开启':'关闭'}切换权限`); }
+        if(error){ alert('操作失败：' + error.message); } else { refreshSwitchPermission(); alert(`已${enable?'开启':'关闭'}切换权限`); }
     };
-    
     window.toggleEveningPermission = async function(uid, enable) {
         if(!confirm(`确定${enable?'开启':'关闭'}该部长的晚讲评查看权限？`)) return;
         const { error } = await sb.from('users').update({ can_view_evening: enable }).eq('uid', uid).eq('role', 'teacher');
-        if(error){ alert('操作失败：' + error.message); }
-        else { refreshSwitchPermission(); alert(`已${enable?'开启':'关闭'}晚讲评查看权限`); }
+        if(error){ alert('操作失败：' + error.message); } else { refreshSwitchPermission(); alert(`已${enable?'开启':'关闭'}晚讲评查看权限`); }
     };
-    
+    window.toggleLeagueViewPermission = async function(uid, enable) {
+        if(!confirm(`确定${enable?'开启':'关闭'}该部长的申报团会查看权限？`)) return;
+        const { error } = await sb.from('users').update({ can_view_league: enable }).eq('uid', uid).eq('role', 'teacher');
+        if(error){ alert('操作失败：' + error.message); } else { refreshSwitchPermission(); alert(`已${enable?'开启':'关闭'}申报团会查看权限`); }
+    };
     window.batchEnableSwitch = async function(){
         let checks = document.querySelectorAll('.switchCheck:checked');
         if(!checks.length){ alert('请先选择部长'); return; }
         if(!confirm(`确定开启选中的 ${checks.length} 个部长的切换权限？`)) return;
         let uids = Array.from(checks).map(c => c.dataset.uid);
         const { error } = await sb.from('users').update({ can_switch: true }).in('uid', uids).eq('role', 'teacher');
-        if(error){ alert('操作失败：' + error.message); }
-        else { refreshSwitchPermission(); alert(`已开启 ${checks.length} 个部长的切换权限`); }
+        if(error){ alert('操作失败：' + error.message); } else { refreshSwitchPermission(); alert(`已开启 ${checks.length} 个部长的切换权限`); }
     };
-    
     window.batchDisableSwitch = async function(){
         let checks = document.querySelectorAll('.switchCheck:checked');
         if(!checks.length){ alert('请先选择部长'); return; }
         if(!confirm(`确定关闭选中的 ${checks.length} 个部长的切换权限？`)) return;
         let uids = Array.from(checks).map(c => c.dataset.uid);
         const { error } = await sb.from('users').update({ can_switch: false }).in('uid', uids).eq('role', 'teacher');
-        if(error){ alert('操作失败：' + error.message); }
-        else { refreshSwitchPermission(); alert(`已关闭 ${checks.length} 个部长的切换权限`); }
+        if(error){ alert('操作失败：' + error.message); } else { refreshSwitchPermission(); alert(`已关闭 ${checks.length} 个部长的切换权限`); }
     };
-    
     window.batchEnableEvening = async function(){
         let checks = document.querySelectorAll('.switchCheck:checked');
         if(!checks.length){ alert('请先选择部长'); return; }
         if(!confirm(`确定开启选中的 ${checks.length} 个部长的晚讲评查看权限？`)) return;
         let uids = Array.from(checks).map(c => c.dataset.uid);
         const { error } = await sb.from('users').update({ can_view_evening: true }).in('uid', uids).eq('role', 'teacher');
-        if(error){ alert('操作失败：' + error.message); }
-        else { refreshSwitchPermission(); alert(`已开启 ${checks.length} 个部长的晚讲评查看权限`); }
+        if(error){ alert('操作失败：' + error.message); } else { refreshSwitchPermission(); alert(`已开启 ${checks.length} 个部长的晚讲评查看权限`); }
     };
-    
     window.batchDisableEvening = async function(){
         let checks = document.querySelectorAll('.switchCheck:checked');
         if(!checks.length){ alert('请先选择部长'); return; }
         if(!confirm(`确定关闭选中的 ${checks.length} 个部长的晚讲评查看权限？`)) return;
         let uids = Array.from(checks).map(c => c.dataset.uid);
         const { error } = await sb.from('users').update({ can_view_evening: false }).in('uid', uids).eq('role', 'teacher');
-        if(error){ alert('操作失败：' + error.message); }
-        else { refreshSwitchPermission(); alert(`已关闭 ${checks.length} 个部长的晚讲评查看权限`); }
+        if(error){ alert('操作失败：' + error.message); } else { refreshSwitchPermission(); alert(`已关闭 ${checks.length} 个部长的晚讲评查看权限`); }
+    };
+    window.batchEnableLeagueView = async function(){
+        let checks = document.querySelectorAll('.switchCheck:checked');
+        if(!checks.length){ alert('请先选择部长'); return; }
+        if(!confirm(`确定开启选中的 ${checks.length} 个部长的申报团会查看权限？`)) return;
+        let uids = Array.from(checks).map(c => c.dataset.uid);
+        const { error } = await sb.from('users').update({ can_view_league: true }).in('uid', uids).eq('role', 'teacher');
+        if(error){ alert('操作失败：' + error.message); } else { refreshSwitchPermission(); alert(`已开启 ${checks.length} 个部长的申报团会查看权限`); }
+    };
+    window.batchDisableLeagueView = async function(){
+        let checks = document.querySelectorAll('.switchCheck:checked');
+        if(!checks.length){ alert('请先选择部长'); return; }
+        if(!confirm(`确定关闭选中的 ${checks.length} 个部长的申报团会查看权限？`)) return;
+        let uids = Array.from(checks).map(c => c.dataset.uid);
+        const { error } = await sb.from('users').update({ can_view_league: false }).in('uid', uids).eq('role', 'teacher');
+        if(error){ alert('操作失败：' + error.message); } else { refreshSwitchPermission(); alert(`已关闭 ${checks.length} 个部长的申报团会查看权限`); }
     };
 
 })();
